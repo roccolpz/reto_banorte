@@ -6,14 +6,21 @@ terraform {
       version = "~> 6.0"
     }
   }
-  backend "gcs" {
-    bucket = "acme-tf-state-bucket"
-    prefix = "stages/test-orchestration"
+  backend "local" {
+    path = "terraform.tfstate"
+    #bucket = "acme-tf-state-6e95"
+    #prefix = "stages/test-orchestration"
   }
 }
 
 provider "google" {
   region = var.primary_region
+}
+
+# 1. Creamos la política global una sola vez para toda la organización
+resource "google_access_context_manager_access_policy" "main" {
+  parent = "organizations/544577283167"
+  title  = "Global_Policy_Demo01"
 }
 
 # ==========================================
@@ -45,18 +52,18 @@ module "gke_prod" {
   network                = module.network_prod.network_id
   subnetwork             = module.network_prod.subnet_id
   master_ipv4_cidr_block = "172.16.0.0/28"
+  master_authorized_networks = var.master_authorized_networks
   node_pools = {
-    default = { machine_type = "e2-medium", min_count = 1, max_count = 3 }
+    default = { machine_type = "e2-small", min_count = 1, max_count = 1 }
   }
 }
 
 # Perímetro VPC-SC para Producción
 module "vpCSC_prod" {
   source              = "../../modules/vpc-sc"
-  parent_org_id       = var.org_id
-  policy_name         = "PolicyProd_${var.suffix}"
-  perimeter_name      = "prod_perimeter_${var.suffix}"
-  restricted_services = ["storage.googleapis.com", "sqladmin.googleapis.com"]
+  perimeter_name      = "PolicyProd_demo01"
+  access_policy_name  = google_access_context_manager_access_policy.main.name
+  restricted_services = ["storage.googleapis.com"] # o los servicios que requieras
   member_projects     = [module.project_host_prod.project_number]
 }
 
@@ -90,8 +97,9 @@ module "gke_dev" {
   network                = module.network_dev.network_id
   subnetwork             = module.network_dev.subnet_id
   master_ipv4_cidr_block = "172.16.10.0/28"
+  master_authorized_networks = var.master_authorized_networks
   node_pools = {
-    default = { machine_type = "e2-medium", min_count = 1, max_count = 2 }
+    default = { machine_type = "e2-small", min_count = 1, max_count = 1 }
   }
 }
 
@@ -125,17 +133,17 @@ module "gke_test" {
   network                = module.network_test.network_id
   subnetwork             = module.network_test.subnet_id
   master_ipv4_cidr_block = "172.16.20.0/28"
+  master_authorized_networks = var.master_authorized_networks
   node_pools = {
-    default = { machine_type = "e2-medium", min_count = 1, max_count = 2 }
+    default = { machine_type = "e2-small", min_count = 1, max_count = 1 }
   }
 }
 
 # Perímetro VPC-SC para Non-Production (Test)
 module "vpCSC_nonprod" {
   source              = "../../modules/vpc-sc"
-  parent_org_id       = var.org_id
-  policy_name         = "PolicyNonProd_${var.suffix}"
-  perimeter_name      = "nonprod_perimeter_${var.suffix}"
+  perimeter_name      = "PolicyNonProd_demo01"
+  access_policy_name  = google_access_context_manager_access_policy.main.name
   restricted_services = ["storage.googleapis.com"]
-  member_projects     = [module.project_host_test.project_number, module.project_host_dev.project_number]
+  member_projects     = [module.project_host_dev.project_number, module.project_host_test.project_number]
 }

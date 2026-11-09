@@ -13,3 +13,12 @@ variable "node_pools" {
     max_count    = number
   }))
 }
+
+variable "master_authorized_networks" {
+  description = "Lista de redes autorizadas para acceder al plano de control de GKE"
+  type = list(object({
+    cidr_block   = string
+    display_name = string
+  }))
+  default = []
+}
