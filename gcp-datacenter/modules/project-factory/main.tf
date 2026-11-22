@@ -4,6 +4,7 @@ resource "google_project" "project" {
   folder_id       = var.folder_id
   billing_account = var.billing_account
   labels          = var.labels
+  deletion_policy = "DELETE"
 }
 
 # Habilitación dinámica de servicios/APIs

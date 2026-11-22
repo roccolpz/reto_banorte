@@ -51,10 +51,10 @@ module "gke_prod" {
   region                 = var.primary_region
   network                = module.network_prod.network_id
   subnetwork             = module.network_prod.subnet_id
-  master_ipv4_cidr_block = "172.16.0.0/28"
+  master_ipv4_cidr_block = "172.16.100.0/28"
   master_authorized_networks = var.master_authorized_networks
   node_pools = {
-    default = { machine_type = "e2-small", min_count = 1, max_count = 1 }
+    default = { machine_type = "e2-micro", min_count = 1, max_count = 1 }
   }
 }
 
@@ -96,10 +96,10 @@ module "gke_dev" {
   region                 = var.primary_region
   network                = module.network_dev.network_id
   subnetwork             = module.network_dev.subnet_id
-  master_ipv4_cidr_block = "172.16.10.0/28"
+  master_ipv4_cidr_block = "172.16.110.0/28"
   master_authorized_networks = var.master_authorized_networks
   node_pools = {
-    default = { machine_type = "e2-small", min_count = 1, max_count = 1 }
+    default = { machine_type = "e2-micro", min_count = 1, max_count = 1 }
   }
 }
 
@@ -132,10 +132,10 @@ module "gke_test" {
   region                 = var.primary_region
   network                = module.network_test.network_id
   subnetwork             = module.network_test.subnet_id
-  master_ipv4_cidr_block = "172.16.20.0/28"
+  master_ipv4_cidr_block = "172.16.120.0/28"
   master_authorized_networks = var.master_authorized_networks
   node_pools = {
-    default = { machine_type = "e2-small", min_count = 1, max_count = 1 }
+    default = { machine_type = "e2-micro", min_count = 1, max_count = 1 }
   }
 }
 
