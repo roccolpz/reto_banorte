@@ -1,7 +1,6 @@
 locals {
-  env                 = "qa"
-  labels              = merge(var.labels, { env = local.env, managed_by = "terraform" })
-  security_project_id = data.terraform_remote_state.org.outputs.common_project_ids["security"]
+  env    = "qa"
+  labels = merge(var.labels, { env = local.env, managed_by = "terraform" })
 }
 
 data "terraform_remote_state" "bootstrap" {
