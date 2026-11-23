@@ -47,6 +47,16 @@ module "kms" {
   labels       = merge(local.labels, { env = each.value.env })
 }
 
+# 4-projects-<env> concede cryptoKeyEncrypterDecrypter a los agentes de sus proyectos. cloudkms.admin es el único rol
+# predefinido con cryptoKeys.setIamPolicy; se otorga por keyring del entorno, no en el proyecto, para que dev no toque prod.
+resource "google_kms_key_ring_iam_member" "stage_4_projects" {
+  for_each = local.keyrings
+
+  key_ring_id = module.kms[each.key].keyring_id
+  role        = "roles/cloudkms.admin"
+  member      = "serviceAccount:${local.stage_sas["4-projects-${each.value.env}"]}"
+}
+
 # --- Secret Manager: solo contenedores; los valores se cargan fuera de Terraform ---
 resource "google_secret_manager_secret" "secrets" {
   for_each = { for p in setproduct(local.envs, var.secret_names) : "${p[0]}/${p[1]}" => { env = p[0], name = p[1] } }

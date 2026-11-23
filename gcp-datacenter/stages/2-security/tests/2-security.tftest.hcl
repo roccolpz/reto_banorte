@@ -42,6 +42,15 @@ run "salidas_y_perimetros" {
   }
 
   assert {
+    condition = (
+      google_kms_key_ring_iam_member.stage_4_projects["dev"].member == "serviceAccount:sa-tf-4-proj-dev@seed.iam.gserviceaccount.com" &&
+      google_kms_key_ring_iam_member.stage_4_projects["prod-us"].member == "serviceAccount:sa-tf-4-proj-prod@seed.iam.gserviceaccount.com" &&
+      google_kms_key_ring_iam_member.stage_4_projects["prod-dr"].role == "roles/cloudkms.admin"
+    )
+    error_message = "Cada SA de 4-projects administra el IAM solo de los keyrings de su entorno."
+  }
+
+  assert {
     condition     = google_secret_manager_secret.secrets["dev/db-app-password"].secret_id == "acme-dev-db-app-password"
     error_message = "Secretos por entorno con prefijo."
   }
