@@ -1,0 +1,19 @@
+# Copiar a terraform.tfvars (excluido por .gitignore). En CI llegan como TF_VAR_*.
+state_bucket       = "acme-tf-state-xxxx"
+prefix             = "acme"
+notification_email = "noc@example.com"
+
+labels = {
+  app         = "landing-zone"
+  owner       = "platform"
+  cost_center = "infra"
+}
+
+# prod: GKE regional, Cloud SQL HA con réplica en us-east4 y protección contra borrado.
+regional            = true
+deletion_protection = true
+sql_ha              = true
+enable_dr_replica   = true
+
+# Requiere la llave storage-us de 2-security y el valor "us" en gcp.resourceLocations (ADR 0002-d).
+bucket_dual_region = true
