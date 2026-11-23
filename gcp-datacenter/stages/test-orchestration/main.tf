@@ -28,7 +28,7 @@ resource "google_access_context_manager_access_policy" "main" {
 # ==========================================
 
 module "project_host_prod" {
-  source          = "../../modules/project-factory"
+  source          = "./legacy-modules/project-factory"
   name            = "Prod VPC Host"
   project_id      = "acme-host-prod-${var.suffix}"
   folder_id       = var.prod_folder_id
@@ -45,7 +45,7 @@ module "network_prod" {
 }
 
 module "gke_prod" {
-  source                     = "../../modules/gke"
+  source                     = "./legacy-modules/gke"
   cluster_name               = "prod-basiquito-gke"
   project_id                 = module.project_host_prod.project_id
   region                     = var.primary_region
@@ -60,7 +60,7 @@ module "gke_prod" {
 
 # Perímetro VPC-SC para Producción
 module "vpCSC_prod" {
-  source              = "../../modules/vpc-sc"
+  source              = "./legacy-modules/vpc-sc"
   perimeter_name      = "PolicyProd_demo01"
   access_policy_name  = google_access_context_manager_access_policy.main.name
   restricted_services = ["storage.googleapis.com"] # o los servicios que requieras
@@ -73,7 +73,7 @@ module "vpCSC_prod" {
 # ==========================================
 
 module "project_host_dev" {
-  source          = "../../modules/project-factory"
+  source          = "./legacy-modules/project-factory"
   name            = "Dev VPC Host"
   project_id      = "acme-host-dev-${var.suffix}"
   folder_id       = var.dev_folder_id
@@ -90,7 +90,7 @@ module "network_dev" {
 }
 
 module "gke_dev" {
-  source                     = "../../modules/gke"
+  source                     = "./legacy-modules/gke"
   cluster_name               = "dev-basiquito-gke"
   project_id                 = module.project_host_dev.project_id
   region                     = var.primary_region
@@ -109,7 +109,7 @@ module "gke_dev" {
 # ==========================================
 
 module "project_host_test" {
-  source          = "../../modules/project-factory"
+  source          = "./legacy-modules/project-factory"
   name            = "Test VPC Host"
   project_id      = "acme-host-test-${var.suffix}"
   folder_id       = var.dev_folder_id # O carpeta de pruebas
@@ -126,7 +126,7 @@ module "network_test" {
 }
 
 module "gke_test" {
-  source                     = "../../modules/gke"
+  source                     = "./legacy-modules/gke"
   cluster_name               = "test-basiquito-gke"
   project_id                 = module.project_host_test.project_id
   region                     = var.primary_region
@@ -141,7 +141,7 @@ module "gke_test" {
 
 # Perímetro VPC-SC para Non-Production (Test)
 module "vpCSC_nonprod" {
-  source              = "../../modules/vpc-sc"
+  source              = "./legacy-modules/vpc-sc"
   perimeter_name      = "PolicyNonProd_demo01"
   access_policy_name  = google_access_context_manager_access_policy.main.name
   restricted_services = ["storage.googleapis.com"]
