@@ -1,7 +1,8 @@
 # IAM de grupos humanos (Fase 3, §3.2) y de las SAs de las etapas 2 a 5.
 # Cada binding se identifica como "<principal>|<tipo de alcance>|<llave del alcance>|<rol>".
 # Tipos de alcance: org, folder (common/dev/qa/prod), project (llave de local.project_ids),
-# billing y audit_bucket.
+# y audit_bucket. El rol billing.admin del grupo billing_admins se otorga a mano en la cuenta de
+# facturación: la SA de 1-org solo tiene billing.user, sin billing.accounts.setIamPolicy.
 
 locals {
   stage_sas = data.terraform_remote_state.bootstrap.outputs.stage_service_accounts
@@ -19,7 +20,6 @@ locals {
       { scope = "org", key = "org", role = "roles/orgpolicy.policyAdmin" },
     ]
     billing_admins = [
-      { scope = "billing", key = "billing", role = "roles/billing.admin" },
       { scope = "org", key = "org", role = "roles/billing.viewer" },
     ]
     security_admins = [
@@ -167,14 +167,6 @@ resource "google_project_iam_member" "this" {
   project = local.project_ids[each.value.key]
   role    = each.value.role
   member  = each.value.member
-}
-
-resource "google_billing_account_iam_member" "this" {
-  for_each = { for k, b in local.iam_bindings : k => b if b.scope == "billing" }
-
-  billing_account_id = var.billing_account
-  role               = each.value.role
-  member             = each.value.member
 }
 
 resource "google_storage_bucket_iam_member" "audit_readers" {

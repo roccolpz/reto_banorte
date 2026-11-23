@@ -20,6 +20,9 @@ IAM y el sink de auditoría. Corre con la SA `sa-tf-1-org` creada por `0-bootstr
   y health checks (`35.191.0.0/16`, `130.211.0.0/22`); el resto pasa (`goto_next`) a las reglas de cada VPC.
 - IAM:
   - Grupos humanos de `var.groups` (Fase 3, §3.2). Si el mapa está vacío no se crea ningún binding.
+    `billing_admins` solo recibe `billing.viewer` en la organización. El rol `roles/billing.admin` en la
+    cuenta de facturación se otorga a mano (la SA de 1-org tiene `billing.user`, que no puede cambiar el IAM
+    de la cuenta); ver `docs/runbooks/bootstrap-first-apply.md`.
   - SAs de las etapas 2 a 5, con roles acotados a su carpeta o proyecto (ver `iam.tf`).
     Las SAs de 1-org y de plan reciben sus roles en 0-bootstrap.
 - Sink agregado de la organización (`include_children = true`) con los logs de auditoría hacia un

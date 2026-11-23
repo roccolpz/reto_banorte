@@ -81,7 +81,18 @@ terraform output -json stage_service_accounts |
 
 Crea los environments `dev`, `qa` y `prod` (ver `docs/README.md`, sección Environments).
 
-## 4. Resto de etapas
+## 4. Rol de administración de facturación (a mano)
+
+Terraform no otorga `roles/billing.admin`: la SA de 1-org solo tiene `billing.user`. Una persona con
+`billing.admin` en la cuenta lo concede al grupo `gcp-billing-admins` en la consola
+(Billing > Account management > Add principal) o con:
+
+```bash
+gcloud billing accounts add-iam-policy-binding <BILLING_ACCOUNT> \
+  --member="group:gcp-billing-admins@<dominio>" --role="roles/billing.admin"
+```
+
+## 5. Resto de etapas
 
 Opción A, por el pipeline: ejecuta el workflow `apply` con "Run workflow" (aplica todas las raíces en orden).
 Aprueba los jobs de prod cuando lleguen; las etapas comunes también corren en `prod`.
@@ -98,7 +109,7 @@ Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 
 Cada raíz de etapa ≥1 recibe `state_bucket` (`export TF_VAR_state_bucket=$BUCKET`).
 
-## 5. Comprobar
+## 6. Comprobar
 
 - Un segundo `plan` en cada raíz dice `No changes.`
 - `tests/e2e/connectivity.sh` pasa contra prod.
