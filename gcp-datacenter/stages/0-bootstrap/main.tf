@@ -128,6 +128,8 @@ resource "google_kms_crypto_key" "state" {
 
 data "google_storage_project_service_account" "gcs" {
   project = module.seed_project.project_id
+
+  depends_on = [module.seed_project]
 }
 
 resource "google_kms_crypto_key_iam_member" "gcs_state" {
