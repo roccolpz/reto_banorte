@@ -1,0 +1,20 @@
+# Copiar a terraform.tfvars (excluido por .gitignore). En CI llegan como TF_VAR_*.
+state_bucket = "acme-tf-state-xxxx"
+suffix       = "xxxx"
+prefix       = "acme"
+
+labels = {
+  app         = "landing-zone"
+  owner       = "platform"
+  cost_center = "infra"
+}
+
+# Política de Access Context Manager existente (número). Si la organización no tiene una:
+# create_access_policy = true y org_id = "000000000000".
+access_policy_name   = "000000000000"
+create_access_policy = false
+
+# Dry-run por default. Pasar a true solo después de revisar las violaciones registradas.
+vpc_sc_enforce = false
+
+secret_names = ["db-app-password"]
