@@ -68,9 +68,14 @@ variable "access_policy_name" {
 }
 
 variable "vpc_sc_enforce" {
-  description = "false: perímetros en dry-run (solo registran violaciones). true: perímetros aplicados. Revisar los logs de dry-run antes de cambiarlo."
-  type        = bool
-  default     = false
+  description = "Por entorno (dev, qa, prod). false: perímetro en dry-run (solo registra violaciones). true: perímetro aplicado. Revisar los logs de dry-run antes de cambiarlo; 4-projects lee el valor de la salida vpc_sc_enforce."
+  type        = map(bool)
+  default     = { dev = false, qa = false, prod = false }
+
+  validation {
+    condition     = toset(keys(var.vpc_sc_enforce)) == toset(["dev", "qa", "prod"])
+    error_message = "vpc_sc_enforce debe tener exactamente las llaves dev, qa y prod."
+  }
 }
 
 variable "restricted_services" {

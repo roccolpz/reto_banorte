@@ -18,7 +18,14 @@ override_data {
 override_data {
   target = data.terraform_remote_state.org
   values = {
-    outputs = { common_project_ids = { security = "acme-common-security-ab12" } }
+    outputs = {
+      common_project_ids     = { security = "acme-common-security-ab12" }
+      common_project_numbers = { security = "333333333333", backup = "444444444444" }
+      custom_role_ids = {
+        kms_key_iam_admin   = "organizations/000000000000/roles/kms_key_iam_admin"
+        tag_value_iam_admin = "organizations/000000000000/roles/tag_value_iam_admin"
+      }
+    }
   }
 }
 
@@ -45,9 +52,9 @@ run "salidas_y_perimetros" {
     condition = (
       google_kms_key_ring_iam_member.stage_4_projects["dev"].member == "serviceAccount:sa-tf-4-proj-dev@seed.iam.gserviceaccount.com" &&
       google_kms_key_ring_iam_member.stage_4_projects["prod-us"].member == "serviceAccount:sa-tf-4-proj-prod@seed.iam.gserviceaccount.com" &&
-      google_kms_key_ring_iam_member.stage_4_projects["prod-dr"].role == "roles/cloudkms.admin"
+      google_kms_key_ring_iam_member.stage_4_projects["prod-dr"].role == "organizations/000000000000/roles/kms_key_iam_admin"
     )
-    error_message = "Cada SA de 4-projects administra el IAM solo de los keyrings de su entorno."
+    error_message = "Cada SA de 4-projects administra solo el IAM de las llaves de su entorno, con el rol a medida (P8)."
   }
 
   assert {
@@ -66,8 +73,13 @@ run "salidas_y_perimetros" {
   }
 
   assert {
-    condition     = alltrue([for m in module.perimeter : m.enforced == false])
-    error_message = "Los perímetros van en dry-run por default."
+    condition     = alltrue([for m in module.perimeter : m.enforced == false]) && output.vpc_sc_enforce == tomap({ dev = false, qa = false, prod = false })
+    error_message = "Los perímetros van en dry-run por default y vpc_sc_enforce se publica por entorno."
+  }
+
+  assert {
+    condition     = length(google_secret_manager_secret_iam_member.accessors) == 0 && alltrue([for e, r in local.egress_rules : length(r) == 0])
+    error_message = "Sin estado de 4-projects no hay identidades de carga: ni accesores de secretos ni egreso."
   }
 
   assert {
@@ -98,7 +110,17 @@ run "agrega_proyectos_de_dev_y_qa_desde_4_projects" {
 
   override_data {
     target = data.terraform_remote_state.projects
-    values = { outputs = { app_project_number = "111", data_project_number = "222" } }
+    values = {
+      outputs = {
+        app_project_number  = "111"
+        data_project_number = "222"
+        service_accounts = {
+          gke_nodes    = "gke-nodes@acme-env-app-ab12.iam.gserviceaccount.com"
+          app_workload = "app-workload@acme-env-app-ab12.iam.gserviceaccount.com"
+          vm           = "vm@acme-env-app-ab12.iam.gserviceaccount.com"
+        }
+      }
+    }
   }
 
   assert {
@@ -118,6 +140,72 @@ run "agrega_proyectos_de_dev_y_qa_desde_4_projects" {
     condition     = length(google_access_context_manager_service_perimeter_resource.env_projects) == 0
     error_message = "En dry-run no se toca el status aplicado."
   }
+
+  assert {
+    condition = (
+      toset(keys(google_secret_manager_secret_iam_member.accessors)) == toset(flatten([
+        for e in ["dev", "qa", "prod"] : ["${e}/db-app-password/app_workload", "${e}/db-app-password/vm"]
+      ])) &&
+      google_secret_manager_secret_iam_member.accessors["prod/db-app-password/vm"].role == "roles/secretmanager.secretAccessor" &&
+      google_secret_manager_secret_iam_member.accessors["prod/db-app-password/vm"].member == "serviceAccount:vm@acme-env-app-ab12.iam.gserviceaccount.com"
+    )
+    error_message = "Solo las SAs de carga app_workload y vm leen los secretos de su entorno (R5)."
+  }
+
+  assert {
+    condition = local.egress_rules["prod"] == [{
+      identities = ["serviceAccount:app-workload@acme-env-app-ab12.iam.gserviceaccount.com"]
+      resources  = ["projects/444444444444"]
+      services   = ["storage.googleapis.com"]
+    }]
+    error_message = "El egreso de cada perímetro solo permite a app_workload escribir en el proyecto de respaldo (ADR 0013-g)."
+  }
+}
+
+run "enforce_por_entorno" {
+  command = plan
+
+  variables {
+    vpc_sc_enforce = { dev = false, qa = true, prod = true }
+  }
+
+  override_data {
+    target = data.google_storage_bucket_objects.projects_state
+    values = { bucket_objects = [{ name = "4-projects/x/default.tfstate", media_link = "", self_link = "", content_type = "", storage_class = "" }] }
+  }
+
+  override_data {
+    target = data.terraform_remote_state.projects
+    values = { outputs = { app_project_number = "111", data_project_number = "222" } }
+  }
+
+  assert {
+    condition     = !module.perimeter["dev"].enforced && module.perimeter["qa"].enforced && module.perimeter["prod"].enforced
+    error_message = "Cada perímetro se aplica según su entorno (S1)."
+  }
+
+  assert {
+    condition = (
+      toset(keys(google_access_context_manager_service_perimeter_dry_run_resource.env_projects)) == toset(["dev/app", "dev/data"]) &&
+      toset(keys(google_access_context_manager_service_perimeter_resource.env_projects)) == toset(["qa/app", "qa/data"])
+    )
+    error_message = "dev queda en dry-run y qa aplicado; prod lo agrega 4-projects-prod."
+  }
+
+  assert {
+    condition     = output.vpc_sc_enforce == tomap({ dev = false, qa = true, prod = true })
+    error_message = "4-projects lee vpc_sc_enforce de esta salida."
+  }
+}
+
+run "enforce_requiere_los_tres_entornos" {
+  command = plan
+
+  variables {
+    vpc_sc_enforce = { dev = true }
+  }
+
+  expect_failures = [var.vpc_sc_enforce]
 }
 
 run "politica_nueva_requiere_org_id" {

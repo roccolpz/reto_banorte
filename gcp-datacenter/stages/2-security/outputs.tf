@@ -25,3 +25,8 @@ output "perimeter_names" {
   description = "env → accessPolicies/<n>/servicePerimeters/<nombre>. Los proyectos de app y datos los agrega 4-projects-prod (prod) o esta etapa (dev, qa; ADR 0007-f)."
   value       = { for env, m in module.perimeter : env => m.name }
 }
+
+output "vpc_sc_enforce" {
+  description = "env → true si el perímetro está aplicado, false si está en dry-run. 4-projects lo lee para agregar sus proyectos con el recurso correcto."
+  value       = var.vpc_sc_enforce
+}
