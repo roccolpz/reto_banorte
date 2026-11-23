@@ -9,8 +9,8 @@ Requisitos previos (los hace `4-projects`): rangos secundarios `pods` y `service
 en la subred y `roles/container.hostServiceAgentUser` en el host para el agente de GKE, y permiso de cifrado del agente
 de GKE sobre la llave KMS.
 
-Compatibilidad: la raíz legada `stages/test-orchestration` llama este módulo sin `labels` ni SA de nodos; por eso
-`labels` acepta un mapa vacío y, sin `node_service_account`, los nodos usan la SA por defecto con scopes mínimos.
+Los nodos llevan la etiqueta segura de `resource_manager_tags` (la usan las reglas de la política de firewall) y
+corren con la SA dedicada de `node_service_account`; el plano de control no puede caer en `192.168.0.0/16` (on-prem).
 
 ## Uso
 
@@ -45,18 +45,19 @@ Ejemplo completo en [examples/basic](examples/basic/main.tf).
 | subnetwork | ID o self link de la subred de nodos. | `string` | n/a | sí |
 | pods_range_name | Rango secundario de pods. | `string` | `null` | no |
 | services_range_name | Rango secundario de services. | `string` | `null` | no |
-| master_ipv4_cidr_block | CIDR /28 del plano de control. | `string` | n/a | sí |
+| master_ipv4_cidr_block | CIDR /28 del plano de control, fuera de `192.168.0.0/16`. | `string` | n/a | sí |
 | master_authorized_networks | Redes autorizadas al plano de control. | `list(object({cidr_block=string, display_name=string}))` | `[]` | no |
 | enable_private_endpoint | Plano de control solo con endpoint privado. | `bool` | `false` | no |
 | node_pools | Pools: llave = nombre; `machine_type`, `min_count`, `max_count` (por zona si es regional). | `map(object)` | n/a | sí |
-| node_service_account | Email de la SA de nodos. | `string` | `null` | no |
+| node_service_account | Email de la SA dedicada de nodos. | `string` | n/a | sí |
+| resource_manager_tags | Etiquetas seguras de los nodos (`tagKeys/ID` = `tagValues/ID`). | `map(string)` | `{}` | no |
 | release_channel | `RAPID`, `REGULAR` o `STABLE`. | `string` | `"REGULAR"` | no |
 | enable_workload_identity | Activa Workload Identity. | `bool` | `true` | no |
 | enable_binary_authorization | Activa Binary Authorization. | `bool` | `true` | no |
 | enable_shielded_nodes | Activa Shielded GKE Nodes. | `bool` | `true` | no |
 | database_encryption_key | Llave KMS para secretos de etcd. | `string` | `null` | no |
 | deletion_protection | Protección contra borrado. | `bool` | `false` | no |
-| labels | Etiquetas (`env`, `app`, `owner`, `cost_center`, `managed_by`). | `map(string)` | `{}` | no |
+| labels | Etiquetas (`env`, `app`, `owner`, `cost_center`, `managed_by`). | `map(string)` | n/a | sí |
 
 ## Salidas
 
