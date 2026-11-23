@@ -78,30 +78,24 @@ variable "add_to_perimeter" {
 }
 
 variable "vpc_sc_enforce" {
-  description = "false agrega los proyectos al spec dry-run del perímetro; true al status aplicado. Debe coincidir con vpc_sc_enforce de 2-security."
+  description = "false agrega los proyectos al spec dry-run del perímetro; true al status aplicado. Viene de vpc_sc_enforce[env] de 2-security."
   type        = bool
-  default     = false
+  nullable    = false
 }
 
 variable "deployer_service_account" {
-  description = "SA de 5-workloads del entorno. Recibe los permisos para desplegar en los proyectos. null no otorga nada."
+  description = "SA de 5-workloads del entorno (stage_service_accounts de 0-bootstrap). Recibe los permisos para desplegar en los proyectos."
   type        = string
-  default     = null
+  nullable    = false
 }
 
-variable "deployer_roles" {
-  description = "Roles de proyecto para deployer_service_account, por dominio (app, data). Solo los que 1-org no otorga ya a nivel de folder del entorno."
-  type        = map(list(string))
-  default = {
-    app = [
-      "roles/compute.loadBalancerAdmin",
-      "roles/monitoring.metricsScopesAdmin",
-      "roles/logging.configWriter",
-    ]
-    # data entra al metrics scope de app: el link exige monitoring.metricsScopes.link en ambos proyectos.
-    data = [
-      "roles/monitoring.metricsScopesAdmin",
-    ]
+variable "secure_tag_values" {
+  description = "Valores de las etiquetas seguras del entorno (secure_tag_values de 3-networks/<env>): gke-nodes y vm → tagValues/<id>."
+  type        = map(string)
+
+  validation {
+    condition     = alltrue([for k in ["gke-nodes", "vm"] : startswith(lookup(var.secure_tag_values, k, ""), "tagValues/")])
+    error_message = "secure_tag_values debe tener gke-nodes y vm con valores tagValues/<id>."
   }
 }
 

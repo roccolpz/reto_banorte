@@ -3,6 +3,11 @@ output "gke_cluster_name" {
   value       = module.gke.cluster_name
 }
 
+output "gke_dr_cluster_name" {
+  description = "Nombre del clúster GKE DR en dr_region; null si no se crea (dev y qa)."
+  value       = one(module.gke_dr[*].cluster_name)
+}
+
 output "sql_instance_name" {
   description = "Nombre de la instancia primaria de Cloud SQL."
   value       = module.sql.instance_name

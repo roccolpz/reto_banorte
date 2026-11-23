@@ -36,13 +36,11 @@ variable "activate_apis" {
 }
 
 variable "labels" {
-  description = "Etiquetas del proyecto. Deben incluir env, app, owner, cost_center y managed_by. El mapa vacío solo se acepta por compatibilidad con la raíz legada test-orchestration."
+  description = "Etiquetas del proyecto. Deben incluir env, app, owner, cost_center y managed_by."
   type        = map(string)
-  default     = {}
 
   validation {
-    # shortcut: el mapa vacío se acepta solo por la raíz legada; quitarlo cuando se retire test-orchestration.
-    condition = length(var.labels) == 0 || alltrue([
+    condition = alltrue([
       for k in ["env", "app", "owner", "cost_center", "managed_by"] : contains(keys(var.labels), k)
     ])
     error_message = "labels debe incluir las llaves env, app, owner, cost_center y managed_by."

@@ -42,8 +42,9 @@ module "env" {
   perimeter_name  = data.terraform_remote_state.security.outputs.perimeter_names[local.env]
   # La SA de este entorno no edita perímetros: 2-security agrega app y datos (ADR 0007-f).
   add_to_perimeter = false
-  vpc_sc_enforce   = var.vpc_sc_enforce
+  vpc_sc_enforce   = data.terraform_remote_state.security.outputs.vpc_sc_enforce[local.env]
   labels           = local.labels
 
-  deployer_service_account = lookup(data.terraform_remote_state.bootstrap.outputs.stage_service_accounts, "5-workloads-${local.env}", null)
+  deployer_service_account = data.terraform_remote_state.bootstrap.outputs.stage_service_accounts["5-workloads-${local.env}"]
+  secure_tag_values        = data.terraform_remote_state.network.outputs.secure_tag_values
 }

@@ -2,12 +2,8 @@ locals {
   # shortcut: asume que la zona "-a" existe en la región (cierto en us-central1 y us-east4); agregar una variable de zona si se usa otra región.
   location = var.regional ? var.region : "${var.region}-a"
 
-  # Con SA dedicada el acceso lo limita IAM; con la SA por defecto de Compute se recortan los scopes.
-  oauth_scopes = var.node_service_account != null ? ["https://www.googleapis.com/auth/cloud-platform"] : [
-    "https://www.googleapis.com/auth/logging.write",
-    "https://www.googleapis.com/auth/monitoring",
-    "https://www.googleapis.com/auth/devstorage.read_only",
-  ]
+  # La SA dedicada es obligatoria: el acceso lo limita IAM, no los scopes.
+  oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
 }
 
 resource "google_container_cluster" "primary" {
@@ -104,6 +100,9 @@ resource "google_container_node_pool" "pools" {
     service_account = var.node_service_account
     oauth_scopes    = local.oauth_scopes
     labels          = var.labels
+
+    # Etiqueta segura (tagKeys/ID = tagValues/ID) que seleccionan las reglas de la política de firewall.
+    resource_manager_tags = var.resource_manager_tags
 
     shielded_instance_config {
       enable_secure_boot          = var.enable_shielded_nodes

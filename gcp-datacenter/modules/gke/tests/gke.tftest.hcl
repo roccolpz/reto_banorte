@@ -96,16 +96,16 @@ run "regional_en_prod" {
   }
 }
 
-run "sin_sa_dedicada_usa_scopes_minimos" {
+run "pools_con_etiquetas_seguras" {
   command = plan
 
   variables {
-    node_service_account = null
+    resource_manager_tags = { "tagKeys/111" = "tagValues/222" }
   }
 
   assert {
-    condition     = !contains(google_container_node_pool.pools["general"].node_config[0].oauth_scopes, "https://www.googleapis.com/auth/cloud-platform")
-    error_message = "Con la SA por defecto no se concede el scope cloud-platform."
+    condition     = google_container_node_pool.pools["general"].node_config[0].resource_manager_tags["tagKeys/111"] == "tagValues/222"
+    error_message = "Los nodos deben llevar la etiqueta segura que usan las reglas de firewall."
   }
 }
 
@@ -127,4 +127,24 @@ run "rechaza_cidr_de_master_invalido" {
   }
 
   expect_failures = [var.master_ipv4_cidr_block]
+}
+
+run "rechaza_master_en_rango_on_prem" {
+  command = plan
+
+  variables {
+    master_ipv4_cidr_block = "192.168.1.0/28"
+  }
+
+  expect_failures = [var.master_ipv4_cidr_block]
+}
+
+run "rechaza_sin_etiquetas" {
+  command = plan
+
+  variables {
+    labels = {}
+  }
+
+  expect_failures = [var.labels]
 }

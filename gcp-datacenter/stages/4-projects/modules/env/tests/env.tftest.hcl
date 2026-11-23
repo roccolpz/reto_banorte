@@ -23,6 +23,8 @@ variables {
   }
   perimeter_name           = "accessPolicies/123456789/servicePerimeters/acme_prod"
   deployer_service_account = "sa-tf-5-wl-prod@seed.iam.gserviceaccount.com"
+  vpc_sc_enforce           = false
+  secure_tag_values        = { "gke-nodes" = "tagValues/1001", vm = "tagValues/1002" }
   labels                   = { app = "landing-zone", owner = "platform", cost_center = "infra", env = "prod", managed_by = "terraform" }
 }
 
@@ -66,6 +68,28 @@ run "proyectos_iam_y_perimetro_dry_run" {
   }
 
   assert {
+    condition     = !contains([for b in google_project_iam_member.deployer : b.project], "acme-prod-net-host-ab12")
+    error_message = "4-projects no da roles en el host a la SA de 5-workloads: 1-org ya da networkUser en la carpeta (P11)."
+  }
+
+  assert {
+    condition = toset(keys(google_tags_tag_value_iam_member.secure_tags)) == toset([
+      "gke-nodes/deployer/roles/resourcemanager.tagUser",
+      "gke-nodes/gke_robot/roles/resourcemanager.tagUser",
+      "gke-nodes/gke_robot/roles/resourcemanager.tagHoldAdmin",
+      "gke-nodes/cloudservices/roles/resourcemanager.tagUser",
+      "vm/deployer/roles/resourcemanager.tagUser",
+      "vm/cloudservices/roles/resourcemanager.tagUser",
+    ])
+    error_message = "Quien liga las etiquetas seguras (SA de 5-workloads, agente de GKE, agente de Google APIs) recibe tagUser; el agente de GKE además tagHoldAdmin."
+  }
+
+  assert {
+    condition     = google_tags_tag_value_iam_member.secure_tags["vm/deployer/roles/resourcemanager.tagUser"].tag_value == "tagValues/1002"
+    error_message = "Los permisos van sobre el valor de etiqueta de 3-networks."
+  }
+
+  assert {
     condition     = google_project_iam_member.workload_roles["app_workload/data/roles/cloudsql.client"].project == "acme-prod-data-ab12"
     error_message = "app_workload recibe cloudsql.client en el proyecto de datos."
   }
@@ -84,17 +108,14 @@ run "perimetro_aplicado" {
   }
 }
 
-run "sin_deployer" {
+run "rechaza_etiquetas_seguras_incompletas" {
   command = plan
 
   variables {
-    deployer_service_account = null
+    secure_tag_values = { vm = "tagValues/1002" }
   }
 
-  assert {
-    condition     = length(google_project_iam_member.deployer) == 0 && length(google_service_account_iam_member.deployer) == 0
-    error_message = "Sin deployer_service_account no hay permisos para la SA de 5-workloads."
-  }
+  expect_failures = [var.secure_tag_values]
 }
 
 run "entorno_invalido" {

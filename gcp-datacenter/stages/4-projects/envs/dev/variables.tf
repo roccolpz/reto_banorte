@@ -33,9 +33,3 @@ variable "labels" {
     error_message = "labels debe incluir app, owner y cost_center."
   }
 }
-
-variable "vpc_sc_enforce" {
-  description = "false agrega los proyectos al perímetro en dry-run; true al perímetro aplicado. Debe coincidir con 2-security."
-  type        = bool
-  default     = false
-}

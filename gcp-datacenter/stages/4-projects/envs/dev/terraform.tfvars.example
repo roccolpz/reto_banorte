@@ -9,6 +9,3 @@ labels = {
   owner       = "platform"
   cost_center = "infra"
 }
-
-# Debe coincidir con vpc_sc_enforce de 2-security.
-vpc_sc_enforce = false

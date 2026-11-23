@@ -6,18 +6,22 @@ Shared VPC de 3-networks y deja listos los permisos que necesita 5-workloads. Ca
 
 Qué hace `modules/env`:
 
-- Proyectos con `modules/project-factory` y sus APIs.
+- Proyectos con `modules/project-factory` y sus APIs; nombre visible `<prefix> <env> app|data`.
 - `roles/compute.networkUser` por subred para el robot de GKE y el agente de Google APIs del proyecto de app;
   `roles/container.hostServiceAgentUser` en el host para el robot de GKE.
 - Cuentas `gke_nodes`, `app_workload` y `vm` con roles mínimos.
 - `roles/cloudkms.cryptoKeyEncrypterDecrypter` sobre `kms_keys[env]` de 2-security. El prefijo del propósito elige el
   agente: `storage*` → Cloud Storage (datos), `sql*` → Cloud SQL (datos), `gke*` → GKE (app).
 - Proyectos de app y datos en el perímetro VPC-SC del entorno, solo en prod (`add_to_perimeter`): spec dry-run con
-  `vpc_sc_enforce = false` (default), status aplicado con `true`. Debe coincidir con 2-security. En dev y qa los
+  `vpc_sc_enforce = false`, status aplicado con `true`. El valor sale de `vpc_sc_enforce[env]` de 2-security. En dev y qa los
   agrega 2-security, porque la SA de esos entornos no tiene `policyEditor` (ADR 0007-f).
 - Permisos de la SA `5-workloads-<env>` de 0-bootstrap: roles de proyecto que 1-org no da en el folder
-  (`deployer_roles`), `networkUser` en el host, `serviceAccountUser` sobre `gke_nodes` y `vm`, y `serviceAccountAdmin`
-  solo sobre `app_workload` (para el binding de Workload Identity).
+  (`local.deployer_roles`; `networkUser` en el host ya lo da 1-org en la carpeta), `serviceAccountUser` sobre
+  `gke_nodes` y `vm`, y `serviceAccountAdmin` solo sobre `app_workload` (para el binding de Workload Identity).
+- `roles/resourcemanager.tagUser` sobre los valores de etiqueta segura `gke-nodes` y `vm` de 3-networks
+  (`secure_tag_values`) para quien los liga: la SA de 5-workloads, el agente de GKE (más `tagHoldAdmin` en
+  `gke-nodes`) y el agente de Google APIs del proyecto de app. 1-org da a esta etapa el rol a medida
+  `tag_value_iam_admin` en el host.
 
 Lee el estado de `0-bootstrap`, `1-org`, `2-security` y `3-networks/<env>`.
 

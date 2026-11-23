@@ -47,12 +47,18 @@ variable "services_range_name" {
 }
 
 variable "master_ipv4_cidr_block" {
-  description = "CIDR /28 del plano de control privado."
+  description = "CIDR /28 del plano de control privado. No puede caer en 192.168.0.0/16 (on-prem)."
   type        = string
 
   validation {
     condition     = can(cidrhost(var.master_ipv4_cidr_block, 0)) && endswith(var.master_ipv4_cidr_block, "/28")
     error_message = "master_ipv4_cidr_block debe ser un CIDR /28 válido."
+  }
+
+  # Un /28 se solapa con 192.168.0.0/16 si sus primeros 16 bits coinciden.
+  validation {
+    condition     = try(cidrhost("${split("/", var.master_ipv4_cidr_block)[0]}/16", 0), "") != "192.168.0.0"
+    error_message = "master_ipv4_cidr_block no puede solaparse con 192.168.0.0/16 (red on-prem)."
   }
 }
 
@@ -91,9 +97,20 @@ variable "node_pools" {
 }
 
 variable "node_service_account" {
-  description = "Email de la SA dedicada de los nodos. null usa la SA por defecto de Compute con scopes mínimos (solo legado)."
+  description = "Email de la SA dedicada de los nodos (nunca la SA por defecto de Compute)."
   type        = string
-  default     = null
+  nullable    = false
+}
+
+variable "resource_manager_tags" {
+  description = "Etiquetas seguras de los nodos, formato { \"tagKeys/ID\" = \"tagValues/ID\" }. Vacío no etiqueta."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = alltrue([for k, v in var.resource_manager_tags : startswith(k, "tagKeys/") && startswith(v, "tagValues/")])
+    error_message = "resource_manager_tags usa llaves tagKeys/ID y valores tagValues/ID."
+  }
 }
 
 variable "release_channel" {
@@ -138,12 +155,11 @@ variable "deletion_protection" {
 }
 
 variable "labels" {
-  description = "Etiquetas del cluster y de los nodos. Deben incluir env, app, owner, cost_center y managed_by. Vacío solo se acepta por el legado."
+  description = "Etiquetas del cluster y de los nodos. Deben incluir env, app, owner, cost_center y managed_by."
   type        = map(string)
-  default     = {}
 
   validation {
-    condition     = length(var.labels) == 0 || alltrue([for k in ["env", "app", "owner", "cost_center", "managed_by"] : contains(keys(var.labels), k)])
+    condition     = alltrue([for k in ["env", "app", "owner", "cost_center", "managed_by"] : contains(keys(var.labels), k)])
     error_message = "labels debe incluir env, app, owner, cost_center y managed_by."
   }
 }

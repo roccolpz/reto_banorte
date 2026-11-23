@@ -73,6 +73,16 @@ run "falla_si_faltan_etiquetas_obligatorias" {
   expect_failures = [var.labels]
 }
 
+run "falla_sin_etiquetas" {
+  command = plan
+
+  variables {
+    labels = {}
+  }
+
+  expect_failures = [var.labels]
+}
+
 run "falla_con_deletion_policy_invalida" {
   command = plan
 

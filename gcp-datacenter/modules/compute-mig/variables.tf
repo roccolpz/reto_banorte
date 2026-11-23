@@ -35,16 +35,49 @@ variable "machine_type" {
   default     = "e2-micro"
 }
 
-variable "source_image" {
-  description = "Imagen de arranque (debe soportar Shielded VM)."
+variable "image_family" {
+  description = "Familia de imagen endurecida de arranque (projects/<proyecto>/global/images/family/<familia>); debe soportar Shielded VM. Ver ADR 0008-i."
   type        = string
-  default     = "debian-cloud/debian-12"
+  default     = "projects/debian-cloud/global/images/family/debian-12"
+  nullable    = false
+
+  validation {
+    condition     = can(regex("^projects/[a-z][-a-z0-9]{4,28}[a-z0-9]/global/images/family/[a-z]([-a-z0-9]{0,61}[a-z0-9])?$", var.image_family))
+    error_message = "image_family debe ser una familia de imagen: projects/<proyecto>/global/images/family/<familia>."
+  }
 }
 
-variable "target_size" {
-  description = "Número de VM del MIG."
+variable "min_replicas" {
+  description = "Mínimo de VM que mantiene el autoscaler."
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.min_replicas >= 1
+    error_message = "min_replicas debe ser al menos 1."
+  }
+}
+
+variable "max_replicas" {
+  description = "Máximo de VM que puede crear el autoscaler."
+  type        = number
+  default     = 3
+
+  validation {
+    condition     = var.max_replicas >= var.min_replicas
+    error_message = "max_replicas no puede ser menor que min_replicas."
+  }
+}
+
+variable "cpu_target" {
+  description = "Uso de CPU promedio (0-1) que el autoscaler busca mantener."
+  type        = number
+  default     = 0.6
+
+  validation {
+    condition     = var.cpu_target > 0 && var.cpu_target < 1
+    error_message = "cpu_target debe estar entre 0 y 1."
+  }
 }
 
 variable "health_check_port" {
@@ -63,6 +96,17 @@ variable "network_tags" {
   description = "Etiquetas de red para reglas de firewall."
   type        = list(string)
   default     = []
+}
+
+variable "resource_manager_tags" {
+  description = "Etiquetas seguras de las VM, formato { \"tagKeys/ID\" = \"tagValues/ID\" }. Vacío no etiqueta."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = alltrue([for k, v in var.resource_manager_tags : startswith(k, "tagKeys/") && startswith(v, "tagValues/")])
+    error_message = "resource_manager_tags usa llaves tagKeys/ID y valores tagValues/ID."
+  }
 }
 
 variable "labels" {

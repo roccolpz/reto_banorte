@@ -40,8 +40,9 @@ module "env" {
   subnets         = data.terraform_remote_state.network.outputs.subnets
   kms_keys        = data.terraform_remote_state.security.outputs.kms_keys[local.env]
   perimeter_name  = data.terraform_remote_state.security.outputs.perimeter_names[local.env]
-  vpc_sc_enforce  = var.vpc_sc_enforce
+  vpc_sc_enforce  = data.terraform_remote_state.security.outputs.vpc_sc_enforce[local.env]
   labels          = local.labels
 
-  deployer_service_account = lookup(data.terraform_remote_state.bootstrap.outputs.stage_service_accounts, "5-workloads-${local.env}", null)
+  deployer_service_account = data.terraform_remote_state.bootstrap.outputs.stage_service_accounts["5-workloads-${local.env}"]
+  secure_tag_values        = data.terraform_remote_state.network.outputs.secure_tag_values
 }

@@ -14,6 +14,13 @@ locals {
       comparison = "COMPARISON_GT"
       threshold  = var.cpu_threshold
     }
+    sql_replica_lag = {
+      enabled    = var.enable_replica_lag_alert
+      title      = "Retraso de réplica de Cloud SQL alto"
+      filter     = "metric.type=\"cloudsql.googleapis.com/database/replication/replica_lag\" AND resource.type=\"cloudsql_database\""
+      comparison = "COMPARISON_GT"
+      threshold  = var.replica_lag_threshold_seconds
+    }
     vpn_tunnel_down = {
       enabled    = var.enable_vpn_alert
       title      = "Túnel VPN caído"
@@ -22,6 +29,8 @@ locals {
       threshold  = 1
     }
   }
+
+  enabled_alerts = { for k, a in local.alerts : k => a if a.enabled }
 }
 
 resource "google_monitoring_notification_channel" "email" {
@@ -42,7 +51,7 @@ resource "google_monitoring_monitored_project" "this" {
 }
 
 resource "google_monitoring_alert_policy" "this" {
-  for_each = { for k, a in local.alerts : k => a if a.enabled }
+  for_each = local.enabled_alerts
 
   project               = var.project_id
   display_name          = "${var.name_prefix} ${each.value.title}"
@@ -65,6 +74,36 @@ resource "google_monitoring_alert_policy" "this" {
       }
     }
   }
+
+  depends_on = [google_monitoring_monitored_project.this]
+}
+
+# Una gráfica por alerta activa, con la misma métrica y alineación que la alerta.
+resource "google_monitoring_dashboard" "this" {
+  project = var.project_id
+  dashboard_json = jsonencode({
+    displayName = "${var.name_prefix} landing zone"
+    gridLayout = {
+      columns = 2
+      widgets = [for k, a in local.enabled_alerts : {
+        title = a.title
+        xyChart = {
+          dataSets = [{
+            plotType = "LINE"
+            timeSeriesQuery = {
+              timeSeriesFilter = {
+                filter = a.filter
+                aggregation = {
+                  alignmentPeriod  = "60s"
+                  perSeriesAligner = "ALIGN_MEAN"
+                }
+              }
+            }
+          }]
+        }
+      }]
+    }
+  })
 
   depends_on = [google_monitoring_monitored_project.this]
 }
