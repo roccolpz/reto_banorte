@@ -23,11 +23,8 @@ variable "subnets" {
   }
 
   validation {
-    condition = alltrue([for c in values(var.subnets) : can(cidrhost(c, 0)) && (
-      # Sin solape con on-prem 192.168.0.0/16: comparación de rangos como enteros.
-      sum([for i, o in split(".", cidrhost(c, 0)) : tonumber(o) * pow(256, 3 - i)]) + pow(2, 32 - tonumber(split("/", c)[1])) <= 3232235520 ||
-      sum([for i, o in split(".", cidrhost(c, 0)) : tonumber(o) * pow(256, 3 - i)]) >= 3232235520 + 65536
-    )])
+    # Dos CIDR se solapan si coinciden al prefijo más corto; try() da false si el CIDR no es válido.
+    condition = alltrue([for c in values(var.subnets) : try(cidrhost("${cidrhost(c, 0)}/${min(16, split("/", c)[1])}", 0) != cidrhost("192.168.0.0/${min(16, split("/", c)[1])}", 0), false)])
     error_message = "Cada subred debe ser un CIDR válido que no se solape con 192.168.0.0/16."
   }
 }
