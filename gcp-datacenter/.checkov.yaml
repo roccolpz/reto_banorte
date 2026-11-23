@@ -1,0 +1,23 @@
+# Configuración de Checkov para el job de CI (soft-fail desactivado: cualquier hallazgo bloquea el PR).
+# Cada omisión lleva su motivo. Agregar una omisión requiere revisión del equipo de seguridad (CODEOWNERS).
+framework:
+  - terraform
+compact: true
+quiet: true
+soft-fail: false
+download-external-modules: false
+skip-path:
+  # Legado con estado local y recursos vivos; se retira al migrar a las etapas nuevas.
+  - stages/test-orchestration
+  - modules/network-host
+  # Fixtures de políticas (JSON de plan), no son código Terraform.
+  - policies/testdata
+skip-check:
+  # PodSecurityPolicy se eliminó en GKE 1.25; la regla ya no aplica.
+  - CKV_GCP_24
+  # RBAC con Google Groups requiere un dominio de Workspace; los grupos son opcionales (CONTRATO §7).
+  - CKV_GCP_65
+  # Binary Authorization queda fuera del alcance de la entrega (ADR 0001).
+  - CKV_GCP_66
+  # Logs de acceso por bucket: la auditoría se cubre con Data Access audit logs y el sink central de 1-org.
+  - CKV_GCP_62
