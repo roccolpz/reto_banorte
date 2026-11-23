@@ -20,3 +20,14 @@ output "audit_log_bucket" {
   description = "Bucket de auditoría que recibe el sink agregado de la organización"
   value       = google_storage_bucket.audit.name
 }
+
+output "common_project_numbers" {
+  description = "Número de cada proyecto de common (net_hub, logging, security, backup). 2-security lo usa como destino de egreso de VPC-SC."
+  value       = { for k, p in module.common_project : k => p.project_number }
+}
+
+output "custom_role_ids" {
+  description = "Roles a medida de la organización: kms_key_iam_admin y tag_value_iam_admin, en formato organizations/<id>/roles/<nombre>"
+  value       = local.custom_role_ids
+  depends_on  = [google_organization_iam_custom_role.this]
+}

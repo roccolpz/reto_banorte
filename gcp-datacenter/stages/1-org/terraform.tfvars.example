@@ -8,6 +8,8 @@ suffix          = "a1b2"
 # region                 = "us-central1"
 # audit_retention_days   = 365
 # audit_retention_locked = false # true es IRREVERSIBLE
+# 1-org no tiene raíz por entorno: la entrega real fija la retención con TF_VAR_audit_retention_locked=true en el
+# pipeline (CONTRATO §8). El default false solo sirve para probar en una organización desechable.
 
 labels = {
   app         = "landing-zone"
@@ -15,8 +17,9 @@ labels = {
   cost_center = "cc-0000"
 }
 
-# Sin grupos no se crean bindings humanos. Llaves válidas: org_admins, billing_admins,
-# security_admins, network_admins, devops, developers, auditors.
+# Sin grupos no se crean bindings humanos. Llaves válidas: org_admins, break_glass, billing_admins,
+# security_admins, network_admins, devops, developers, auditors. break_glass queda sin miembros fuera de un
+# incidente (ADR 0009-g).
 # groups = {
 #   org_admins = "gcp-org-admins@example.com"
 #   auditors   = "gcp-auditors@example.com"
