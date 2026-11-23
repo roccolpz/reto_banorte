@@ -13,7 +13,7 @@ locals {
 module "app" {
   source = "../../../../modules/project-factory"
 
-  name                       = local.app_project_id
+  name                       = "${var.prefix} ${var.env} app"
   project_id                 = local.app_project_id
   folder_id                  = var.folder_id
   billing_account            = var.billing_account
@@ -32,7 +32,7 @@ module "app" {
 module "data" {
   source = "../../../../modules/project-factory"
 
-  name                       = local.data_project_id
+  name                       = "${var.prefix} ${var.env} data"
   project_id                 = local.data_project_id
   folder_id                  = var.folder_id
   billing_account            = var.billing_account
@@ -104,7 +104,6 @@ locals {
   domain_projects = {
     app  = module.app.project_id
     data = module.data.project_id
-    host = var.host_project_id
   }
 }
 
@@ -193,16 +192,29 @@ resource "google_access_context_manager_service_perimeter_resource" "projects" {
 # --- SA de 5-workloads: permisos para desplegar en estos proyectos ---
 
 locals {
-  deployer_roles = merge(var.deployer_roles, { host = ["roles/compute.networkUser"] })
+  deployer = "serviceAccount:${var.deployer_service_account}"
 
-  deployer_project_bindings = var.deployer_service_account == null ? {} : merge([
+  # Solo lo que 1-org no otorga ya en la carpeta del entorno (networkUser en el host incluido).
+  deployer_roles = {
+    app = [
+      "roles/compute.loadBalancerAdmin",
+      "roles/monitoring.metricsScopesAdmin",
+      "roles/logging.configWriter",
+    ]
+    # data entra al metrics scope de app: el link exige monitoring.metricsScopes.link en ambos proyectos.
+    data = [
+      "roles/monitoring.metricsScopesAdmin",
+    ]
+  }
+
+  deployer_project_bindings = merge([
     for domain, roles in local.deployer_roles : {
       for role in roles : "${domain}/${role}" => { project = local.domain_projects[domain], role = role }
     }
   ]...)
 
   # serviceAccountAdmin solo sobre app_workload: 5-workloads crea el binding de Workload Identity cuando existe el clúster.
-  deployer_sa_bindings = var.deployer_service_account == null ? {} : {
+  deployer_sa_bindings = {
     gke_nodes    = "roles/iam.serviceAccountUser"
     vm           = "roles/iam.serviceAccountUser"
     app_workload = "roles/iam.serviceAccountAdmin"
@@ -214,7 +226,7 @@ resource "google_project_iam_member" "deployer" {
 
   project = each.value.project
   role    = each.value.role
-  member  = "serviceAccount:${var.deployer_service_account}"
+  member  = local.deployer
 }
 
 resource "google_service_account_iam_member" "deployer" {
@@ -222,5 +234,45 @@ resource "google_service_account_iam_member" "deployer" {
 
   service_account_id = google_service_account.workloads[each.key].name
   role               = each.value
-  member             = "serviceAccount:${var.deployer_service_account}"
+  member             = local.deployer
+}
+
+# --- Etiquetas seguras de 3-networks: quién puede ligarlas ---
+
+locals {
+  # 5-workloads liga la etiqueta; el agente de GKE la pone en los nodos (y retiene el valor mientras exista el
+  # clúster); el agente de Google APIs crea las VM de los MIG y de los pools.
+  secure_tag_members = {
+    "gke-nodes" = {
+      deployer      = ["roles/resourcemanager.tagUser"]
+      gke_robot     = ["roles/resourcemanager.tagUser", "roles/resourcemanager.tagHoldAdmin"]
+      cloudservices = ["roles/resourcemanager.tagUser"]
+    }
+    vm = {
+      deployer      = ["roles/resourcemanager.tagUser"]
+      cloudservices = ["roles/resourcemanager.tagUser"]
+    }
+  }
+
+  secure_tag_principals = {
+    deployer      = local.deployer
+    gke_robot     = local.gke_robot
+    cloudservices = local.cloudservices
+  }
+}
+
+resource "google_tags_tag_value_iam_member" "secure_tags" {
+  for_each = merge([
+    for tag, who in local.secure_tag_members : merge([
+      for principal, roles in who : {
+        for role in roles : "${tag}/${principal}/${role}" => { tag = tag, principal = principal, role = role }
+      }
+    ]...)
+  ]...)
+
+  tag_value = var.secure_tag_values[each.value.tag]
+  role      = each.value.role
+  member    = local.secure_tag_principals[each.value.principal]
+
+  depends_on = [module.app]
 }
