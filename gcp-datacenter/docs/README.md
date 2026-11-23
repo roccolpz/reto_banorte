@@ -112,6 +112,7 @@ Detalle de las capas de prueba: [tests/README.md](../tests/README.md).
 ## Runbooks
 
 - [Primer apply y migración del estado de bootstrap](runbooks/bootstrap-first-apply.md)
+- [Primer despliegue en una organización de prueba](runbooks/despliegue-org-prueba.md)
 - [Agregar un entorno o un proyecto de aplicación](runbooks/add-environment.md)
 - [Túnel VPN o BGP caído](runbooks/vpn-down.md)
 - [Failover de Cloud SQL a us-east4](runbooks/dr-failover-cloudsql.md)
