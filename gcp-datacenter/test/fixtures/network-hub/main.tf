@@ -33,7 +33,7 @@ locals {
     env         = "dev"
     app         = "terratest"
     owner       = "plataforma"
-    cost_center = "TI-001"
+    cost_center = "ti-001"
     managed_by  = "terraform"
   }
 }
