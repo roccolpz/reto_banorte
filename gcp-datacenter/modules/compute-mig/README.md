@@ -35,7 +35,7 @@ Ejemplo completo en [examples/basic](examples/basic/main.tf).
 | subnetwork | Subred de la Shared VPC. | `string` | n/a | sí |
 | service_account_email | SA de las VM. | `string` | n/a | sí |
 | machine_type | Tipo de máquina. | `string` | `"e2-micro"` | no |
-| image_family | Familia de imagen endurecida (`projects/<p>/global/images/family/<f>`). | `string` | `"projects/debian-cloud/global/images/family/debian-12"` | no |
+| image_family | Familia de imagen endurecida (`projects/<p>/global/images/family/<f>`). null usa el default. | `string` | `"projects/debian-cloud/global/images/family/debian-12"` | no |
 | min_replicas | Mínimo de VM del autoscaler. | `number` | `1` | no |
 | max_replicas | Máximo de VM del autoscaler. | `number` | `3` | no |
 | cpu_target | Uso de CPU objetivo del autoscaler (0-1). | `number` | `0.6` | no |

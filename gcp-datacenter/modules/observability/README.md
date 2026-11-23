@@ -50,6 +50,7 @@ Ejemplo completo en [examples/basic](examples/basic/main.tf).
 | notification_channel_id | ID del canal de correo. |
 | alert_policy_ids | IDs de las alertas por llave. |
 | dashboard_id | ID del tablero. |
+| uptime_check_id | ID del uptime check; null sin `uptime_check_host`. |
 
 ## Pruebas
 

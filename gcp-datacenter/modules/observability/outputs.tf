@@ -12,3 +12,8 @@ output "dashboard_id" {
   description = "ID del tablero de monitoreo del entorno."
   value       = google_monitoring_dashboard.this.id
 }
+
+output "uptime_check_id" {
+  description = "ID del uptime check; null sin uptime_check_host."
+  value       = one(google_monitoring_uptime_check_config.this[*].id)
+}
