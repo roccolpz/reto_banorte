@@ -71,6 +71,8 @@ Con las salidas de 0-bootstrap, en Settings > Secrets and variables > Actions > 
 | `TF_VAR_ORG_ID`, `TF_VAR_BILLING_ACCOUNT`, `TF_VAR_SUFFIX` | los mismos valores del `terraform.tfvars` |
 | `TF_LABELS_JSON` | `labels` del `terraform.tfvars` en JSON, p. ej. `{"app":"landing-zone","owner":"platform","cost_center":"infra"}` |
 | `NOTIFICATION_EMAIL` | correo que recibe las alertas de 5-workloads |
+| `AUDIT_RETENTION_LOCKED` | opcional; vacío = `true` (bloquea la retención de auditoría, ver abajo). `false` solo en organizaciones de prueba |
+| `TF_SA_TERRATEST`, `TEST_FOLDER_ID`, `TEST_BILLING_ACCOUNT`, `TEST_ACCESS_POLICY` | solo para la corrida nocturna de Terratest (`runbooks/terratest.md`) |
 
 Este comando imprime las variables `TF_SA_*` listas para copiar:
 
@@ -112,19 +114,38 @@ Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 
 Cada raíz de etapa ≥1 recibe `state_bucket` (`export TF_VAR_state_bucket=$BUCKET`).
 
-### Entrega real: bloquear la retención de auditoría
+En la opción B, exporta también `TF_VAR_audit_retention_locked=true` antes de aplicar `1-org` (ver abajo).
 
-`audit_retention_locked` queda en `false` por default para que los entornos de prueba se puedan destruir, y el
-workflow `apply` no la pasa. En la entrega real, aplica `1-org` a mano una vez con el bloqueo:
+### Primer apply de `3-networks/hub`: la IP del forwarder DNS
 
-```bash
-export TF_VAR_audit_retention_locked=true
-terraform -chdir=stages/1-org apply
-```
+El hub lee la IP que GCP reserva para la política DNS entrante de `onprem-sim` (propósito `DNS_RESOLVER`). En el
+primer apply esa IP a veces todavía no existe y el apply se detiene en la postcondición con el mensaje
+"GCP aún no reservó la IP DNS_RESOLVER del forwarder entrante de onprem-sim…". No es un error de configuración:
+
+1. Espera un minuto.
+2. Vuelve a correr el apply de `3-networks/hub` (en el pipeline: "Re-run failed jobs"; a mano: `terraform apply`).
+
+Si falla otra vez después de unos minutos, define `onprem_dns_target_ips` con la IP del DNS de on-prem y aplica
+(ver "Riesgos abiertos" en `stages/3-networks/README.md`).
+
+### Firewall de los entornos
+
+Cada entorno usa una política de firewall de red con etiquetas seguras `gke-nodes` y `vm`, no reglas de VPC.
+On-prem (`192.168.0.0/16`) solo puede iniciar conexiones TCP 80 y 443 hacia esas cargas, con logging. Una VM o
+nodo sin etiqueta no recibe ingreso. La tabla completa de reglas está en `stages/3-networks/README.md`.
+
+### Retención de auditoría bloqueada (1-org)
+
+El pipeline (`_tf-apply.yml`, `ci.yml` y `drift.yml`) pasa `TF_VAR_audit_retention_locked=true` a 1-org, así que
+el primer apply por el pipeline bloquea la retención del bucket de auditoría. En Terraform el default sigue en
+`false` para que un apply a mano en una organización de prueba no lo bloquee por accidente.
 
 Es irreversible: el bucket de auditoría no se puede borrar ni acortar su retención hasta que venza (contrato §8).
-Las corridas posteriores del pipeline con `false` no lo desbloquean, pero `plan` muestra la diferencia; deja la
-variable en `true` también en `stages/1-org/terraform.tfvars` de la entrega.
+
+- **Entrega real:** no definas `AUDIT_RETENTION_LOCKED` (vacío = `true`). En la opción B, exporta
+  `TF_VAR_audit_retention_locked=true` antes del apply de `1-org`.
+- **Organización de prueba que se va a destruir:** define la variable del repositorio
+  `AUDIT_RETENTION_LOCKED=false` antes del primer apply. Cambiarla después no desbloquea un bucket ya bloqueado.
 
 ## 6. Comprobar
 
