@@ -11,7 +11,7 @@ on:
         type: string
         required: true
       environment:
-        description: Environment de GitHub (common, dev, qa, prod). prod exige aprobación.
+        description: Environment de GitHub (dev, qa, prod; las etapas comunes usan prod). prod exige aprobación.
         type: string
         required: true
       roots:

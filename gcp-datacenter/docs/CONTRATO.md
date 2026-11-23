@@ -154,7 +154,8 @@ Nombres exactos; los consumidores dependen de ellos.
 ## 7. Identidad y CI
 
 - Repositorio GitHub: `roccolpz/reto_banorte` (privado). WIF acepta solo ese repositorio (`attribute_condition`).
-- Las SA `*-prod` solo se pueden impersonar desde el environment `prod` de GitHub (`attribute.environment`).
+- Las SA `*-prod` y las de `1-org`, `2-security` y `3-networks-hub` solo se pueden impersonar desde el environment `prod`
+  de GitHub (`attribute.environment`). La SA `plan` no tiene esa restricción (plan de PR y drift).
 - Sin llaves JSON. Sin secretos en código ni en `.tfvars`.
 - Valores no secretos por raíz en `terraform.tfvars.example` (el `.gitignore` excluye `*.tfvars`).
   En CI llegan como `TF_VAR_*` desde variables de GitHub: `TF_VAR_org_id`, `TF_VAR_billing_account`, `TF_VAR_state_bucket`, `TF_VAR_suffix`.

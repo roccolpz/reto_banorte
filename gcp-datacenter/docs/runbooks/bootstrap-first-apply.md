@@ -79,12 +79,12 @@ terraform output -json stage_service_accounts |
   jq -r 'to_entries[] | select(.key != "plan") | "TF_SA_\(.key | ascii_upcase | gsub("-"; "_"))=\(.value)"'
 ```
 
-Crea los environments `common`, `dev`, `qa` y `prod` (ver `docs/README.md`, sección Environments).
+Crea los environments `dev`, `qa` y `prod` (ver `docs/README.md`, sección Environments).
 
 ## 4. Resto de etapas
 
 Opción A, por el pipeline: ejecuta el workflow `apply` con "Run workflow" (aplica todas las raíces en orden).
-Aprueba los jobs de prod cuando lleguen.
+Aprueba los jobs de prod cuando lleguen; las etapas comunes también corren en `prod`.
 
 Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 `terraform init -backend-config="bucket=$BUCKET"` y `terraform apply` en cada raíz:

@@ -46,6 +46,7 @@ locals {
   billing_users = concat(["1-org"], [for e in local.envs : "4-projects-${e}"])
 
   wif_principal_repo = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repository}"
+  prod_gated_common  = ["1-org", "2-security", "3-networks-hub"]
   wif_principal_prod = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.environment/prod"
 }
 
@@ -232,12 +233,13 @@ resource "google_iam_workload_identity_pool_provider" "github" {
   }
 }
 
-# Las SA *-prod solo se impersonan desde el environment prod de GitHub;
-# el resto desde cualquier job del repositorio autorizado (attribute_condition del proveedor).
+# Las SA *-prod y las de etapas comunes (1-org, 2-security, 3-networks-hub) solo se impersonan desde el environment
+# prod de GitHub: tocan recursos de los que depende prod. El resto, incluida la SA de plan, desde cualquier job del
+# repositorio autorizado (attribute_condition del proveedor).
 resource "google_service_account_iam_member" "wif" {
   for_each = local.service_accounts
 
   service_account_id = google_service_account.stage[each.key].name
   role               = "roles/iam.workloadIdentityUser"
-  member             = endswith(each.key, "-prod") ? local.wif_principal_prod : local.wif_principal_repo
+  member             = endswith(each.key, "-prod") || contains(local.prod_gated_common, each.key) ? local.wif_principal_prod : local.wif_principal_repo
 }
