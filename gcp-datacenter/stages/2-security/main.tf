@@ -14,12 +14,14 @@ locals {
   stage_sas           = data.terraform_remote_state.bootstrap.outputs.stage_service_accounts
   labels              = merge(var.labels, { managed_by = "terraform" })
 
-  # Un keyring por entorno en us-central1; prod suma un keyring DR en us-east4 para la réplica de Cloud SQL.
+  # Un keyring por entorno en us-central1; prod suma un keyring DR en us-east4 para la réplica de Cloud SQL
+  # y uno en la multi-región us para el bucket dual-region (ADR 0002-d).
   keyrings = {
     dev     = { env = "dev", location = "us-central1", keys = ["storage", "sql", "gke"] }
     qa      = { env = "qa", location = "us-central1", keys = ["storage", "sql", "gke"] }
     prod    = { env = "prod", location = "us-central1", keys = ["storage", "sql", "gke"] }
     prod-dr = { env = "prod", location = "us-east4", keys = ["sql-dr"] }
+    prod-us = { env = "prod", location = "us", keys = ["storage-us"] }
   }
 
   access_policy_name = var.create_access_policy ? google_access_context_manager_access_policy.this[0].name : var.access_policy_name

@@ -8,6 +8,7 @@ override_data {
         plan              = "sa-tf-plan@seed.iam.gserviceaccount.com"
         "2-security"      = "sa-tf-2-sec@seed.iam.gserviceaccount.com"
         "4-projects-dev"  = "sa-tf-4-proj-dev@seed.iam.gserviceaccount.com"
+        "4-projects-qa"   = "sa-tf-4-proj-qa@seed.iam.gserviceaccount.com"
         "4-projects-prod" = "sa-tf-4-proj-prod@seed.iam.gserviceaccount.com"
       }
     }
@@ -31,8 +32,13 @@ run "salidas_y_perimetros" {
   command = plan
 
   assert {
-    condition     = keys(output.kms_keys["prod"]) == ["gke", "sql", "sql-dr", "storage"] && keys(output.kms_keys["dev"]) == ["gke", "sql", "storage"]
-    error_message = "kms_keys: dev/qa con storage, sql, gke; prod además sql-dr."
+    condition     = keys(output.kms_keys["prod"]) == ["gke", "sql", "sql-dr", "storage", "storage-us"] && keys(output.kms_keys["dev"]) == ["gke", "sql", "storage"]
+    error_message = "kms_keys: dev/qa con storage, sql, gke; prod además sql-dr y storage-us."
+  }
+
+  assert {
+    condition     = local.keyrings["prod-us"].location == "us" && local.keyrings["prod-us"].keys == ["storage-us"]
+    error_message = "storage-us vive en un keyring de la multi-región us (ADR 0002-d)."
   }
 
   assert {

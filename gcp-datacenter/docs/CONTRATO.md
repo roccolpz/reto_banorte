@@ -129,7 +129,7 @@ Nombres exactos; los consumidores dependen de ellos.
 - `audit_log_bucket` (string)
 
 **2-security**
-- `kms_keys` (map(map(string))): `[env][purpose]` → id de llave; `purpose` ∈ `storage`, `sql`, `gke`; regiones: llaves us-central1; prod además `sql-dr` en us-east4
+- `kms_keys` (map(map(string))): `[env][purpose]` → id de llave; `purpose` ∈ `storage`, `sql`, `gke`; regiones: llaves us-central1; prod además `sql-dr` en us-east4 y `storage-us` en la multi-región us (ADR 0002-d)
 - `secret_ids` (map(map(string))): `[env][nombre]` → id del secreto (contenedor sin versión)
 - `access_policy_name` (string, número)
 - `perimeter_names` (map(string)): `dev`, `qa`, `prod` → `accessPolicies/<n>/servicePerimeters/<nombre>`

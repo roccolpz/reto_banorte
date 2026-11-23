@@ -1,5 +1,5 @@
 output "kms_keys" {
-  description = "[env][propósito] → ID de la llave. Propósitos: storage, sql, gke (us-central1); prod además sql-dr (us-east4)."
+  description = "[env][propósito] → ID de la llave. Propósitos: storage, sql, gke (us-central1); prod además sql-dr (us-east4) y storage-us (us)."
   value = {
     for env in local.envs : env => merge([
       for kr, cfg in local.keyrings : module.kms[kr].key_ids if cfg.env == env
