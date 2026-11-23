@@ -14,9 +14,9 @@ Qué hace `modules/env`:
   agente: `storage*` → Cloud Storage (datos), `sql*` → Cloud SQL (datos), `gke*` → GKE (app).
 - Proyectos de app y datos en el perímetro VPC-SC del entorno: spec dry-run con `vpc_sc_enforce = false` (default),
   status aplicado con `true`. Debe coincidir con 2-security.
-- Permisos de la SA `5-workloads-<env>` de 0-bootstrap: roles de proyecto (`deployer_roles`), `networkUser` en el host,
-  `serviceAccountUser` sobre `gke_nodes` y `vm`, y `serviceAccountAdmin` solo sobre `app_workload` (para el binding de
-  Workload Identity).
+- Permisos de la SA `5-workloads-<env>` de 0-bootstrap: roles de proyecto que 1-org no da en el folder
+  (`deployer_roles`), `networkUser` en el host, `serviceAccountUser` sobre `gke_nodes` y `vm`, y `serviceAccountAdmin`
+  solo sobre `app_workload` (para el binding de Workload Identity).
 
 Lee el estado de `0-bootstrap`, `1-org`, `2-security` y `3-networks/<env>`.
 

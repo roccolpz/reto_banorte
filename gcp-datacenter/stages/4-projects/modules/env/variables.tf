@@ -84,20 +84,15 @@ variable "deployer_service_account" {
 }
 
 variable "deployer_roles" {
-  description = "Roles de proyecto para deployer_service_account, por dominio (app, data)."
+  description = "Roles de proyecto para deployer_service_account, por dominio (app, data). Solo los que 1-org no otorga ya a nivel de folder del entorno."
   type        = map(list(string))
   default = {
     app = [
-      "roles/container.admin",
-      "roles/compute.instanceAdmin.v1",
       "roles/compute.loadBalancerAdmin",
-      "roles/monitoring.editor",
       "roles/monitoring.metricsScopesAdmin",
       "roles/logging.configWriter",
     ]
     data = [
-      "roles/cloudsql.admin",
-      "roles/storage.admin",
       "roles/monitoring.viewer",
     ]
   }
