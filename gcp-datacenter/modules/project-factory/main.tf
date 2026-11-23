@@ -1,10 +1,11 @@
 resource "google_project" "project" {
-  name            = var.name
-  project_id      = var.project_id
-  folder_id       = var.folder_id
-  billing_account = var.billing_account
-  labels          = var.labels
-  deletion_policy = "DELETE"
+  name                = var.name
+  project_id          = var.project_id
+  folder_id           = var.folder_id
+  billing_account     = var.billing_account
+  labels              = var.labels
+  auto_create_network = var.auto_create_network
+  deletion_policy     = var.deletion_policy
 }
 
 # Habilitación dinámica de servicios/APIs
