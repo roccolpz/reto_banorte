@@ -132,6 +132,7 @@ jobs:
             exit 1
           fi
 
+  # terraform test en cada módulo y raíz de etapa con carpeta tests/ (proveedores simulados, sin credenciales).
   module-tests:
     needs: detect
     if: needs.detect.outputs.modules != '[]'

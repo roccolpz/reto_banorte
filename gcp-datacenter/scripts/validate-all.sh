@@ -2,7 +2,7 @@
 # Validación local completa, sin credenciales ni backend:
 #   1. terraform fmt -check en módulos y etapas (sin el legado test-orchestration, que no está formateado)
 #   2. init -backend=false + validate en cada raíz, en cada examples/* de módulo y en el legado test-orchestration
-#   3. terraform test en cada módulo con carpeta tests/
+#   3. terraform test en cada módulo y raíz con carpeta tests/
 # Sale con código distinto de cero si algo falla; imprime un resumen al final.
 # Usa TF_PLUGIN_CACHE_DIR si está definido para no descargar proveedores en cada raíz.
 set -euo pipefail
@@ -30,13 +30,14 @@ run() {
   fi
 }
 
-# init puede agregar hashes de la plataforma local al lock file versionado; se restaura al terminar.
+# init puede agregar hashes de la plataforma local al lock file versionado, o crear uno nuevo;
+# al terminar se restaura el original o se borra el creado.
 tf_run() {
   local dir=$1 cmd=$2 lock="$1/.terraform.lock.hcl" saved="" rc=0
   [ -f "$lock" ] && saved=$(cat "$lock")
   terraform -chdir="$dir" init -backend=false -input=false >/dev/null &&
     terraform -chdir="$dir" "$cmd" -no-color || rc=$?
-  [ -z "$saved" ] || printf '%s\n' "$saved" >"$lock"
+  if [ -n "$saved" ]; then printf '%s\n' "$saved" >"$lock"; else rm -f "$lock"; fi
   return "$rc"
 }
 

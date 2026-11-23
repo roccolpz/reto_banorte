@@ -6,7 +6,7 @@ la cuarta necesita credenciales y la quinta necesita la infraestructura aplicada
 | Capa | Qué prueba | Dónde vive | Cómo se corre |
 |------|------------|------------|---------------|
 | 1. Estáticas | Formato, sintaxis, buenas prácticas y seguridad del código | todo `gcp-datacenter/` | `terraform fmt -check`, `terraform validate`, `tflint` (`.tflint.hcl`), `checkov` (`.checkov.yaml`) |
-| 2. Módulos | Lógica de cada módulo con proveedores simulados (`mock_provider`) | `modules/<módulo>/tests/*.tftest.hcl` | `terraform -chdir=modules/<módulo> test` |
+| 2. Módulos y raíces | Lógica de cada módulo y raíz con proveedores simulados (`mock_provider`) | `modules/<módulo>/tests/`, `stages/<raíz>/tests/` | `terraform -chdir=<dir> test` |
 | 3. Políticas | Reglas de cumplimiento sobre el plan en JSON | `policies/*.rego`, pruebas en `policies/*_test.rego`, planes de ejemplo en `policies/testdata/` | `conftest verify --policy policies` |
 | 4. Plan | El plan real de cada raíz afectada cumple las políticas | CI, job `plan` | `terraform show -json tfplan` y `conftest test` |
 | 5. E2E | Conectividad híbrida real después del apply | `tests/e2e/connectivity.sh` | a mano, después del apply de prod |
