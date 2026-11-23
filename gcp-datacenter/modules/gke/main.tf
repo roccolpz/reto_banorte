@@ -127,3 +127,10 @@ resource "google_container_node_pool" "pools" {
     ignore_changes = [initial_node_count]
   }
 }
+
+# Estado del legado (stages/test-orchestration): el pool único `primary_nodes` pasó a `pools`, llave "default".
+# Solo evita el destroy por cambio de dirección; los atributos distintos (nombre, máquina, scopes) aún fuerzan reemplazo.
+moved {
+  from = google_container_node_pool.primary_nodes
+  to   = google_container_node_pool.pools["default"]
+}
