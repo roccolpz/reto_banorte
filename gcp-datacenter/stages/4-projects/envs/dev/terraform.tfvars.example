@@ -1,0 +1,14 @@
+# Copiar a terraform.tfvars (excluido por .gitignore). En CI llegan como TF_VAR_*.
+state_bucket    = "acme-tf-state-xxxx"
+suffix          = "xxxx"
+prefix          = "acme"
+billing_account = "000000-000000-000000"
+
+labels = {
+  app         = "landing-zone"
+  owner       = "platform"
+  cost_center = "infra"
+}
+
+# Debe coincidir con vpc_sc_enforce de 2-security.
+vpc_sc_enforce = false
