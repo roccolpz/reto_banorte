@@ -22,7 +22,7 @@ locals {
     }
     security = {
       domain = "security"
-      apis   = ["cloudkms.googleapis.com", "secretmanager.googleapis.com", "accesscontextmanager.googleapis.com", "securitycenter.googleapis.com", "logging.googleapis.com"]
+      apis   = ["cloudkms.googleapis.com", "secretmanager.googleapis.com", "accesscontextmanager.googleapis.com", "securitycenter.googleapis.com", "pubsub.googleapis.com", "logging.googleapis.com"]
     }
     backup = {
       domain = "backup"
@@ -37,6 +37,8 @@ locals {
     "networkconnectivity.googleapis.com",
     "servicenetworking.googleapis.com",
     "logging.googleapis.com",
+    # Tags seguros GCE_FIREWALL que 3-networks crea en el net-host.
+    "cloudresourcemanager.googleapis.com",
   ]
 }
 

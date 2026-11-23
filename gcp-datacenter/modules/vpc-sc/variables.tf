@@ -35,9 +35,9 @@ variable "member_projects" {
 }
 
 variable "enforce" {
-  description = "true: la configuración va en status (aplicada). false: va en spec con use_explicit_dry_run_spec (solo dry-run). El default true conserva el comportamiento de la raíz legada test-orchestration; las etapas nuevas pasan var.vpc_sc_enforce (default false)."
+  description = "true: la configuración va en status (aplicada). false: va en spec con use_explicit_dry_run_spec (solo dry-run). Default false (CONTRATO §8)."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "ingress_identities" {
@@ -51,13 +51,30 @@ variable "ingress_identities" {
   }
 }
 
-variable "egress_identities" {
-  description = "Identidades que pueden salir del perímetro hacia cualquier recurso y servicio. Vacío: sin regla de egreso."
-  type        = list(string)
-  default     = []
+variable "egress_rules" {
+  description = "Reglas de egreso explícitas (Fase 3 §5.2): cada una permite a `identities` llamar a `services` sobre los proyectos `resources` (projects/<número>) fuera del perímetro. Vacío: sin egreso."
+  type = list(object({
+    identities = list(string)
+    resources  = list(string)
+    services   = list(string)
+  }))
+  default = []
 
   validation {
-    condition     = alltrue([for i in var.egress_identities : can(regex("^(serviceAccount|user|group|principal|principalSet):", i))])
-    error_message = "Cada identidad debe empezar con serviceAccount:, user:, group:, principal: o principalSet:."
+    condition = alltrue([
+      for r in var.egress_rules :
+      length(r.identities) > 0 && alltrue([for i in r.identities : can(regex("^(serviceAccount|user|group|principal|principalSet):", i))])
+    ])
+    error_message = "Cada regla necesita identidades que empiecen con serviceAccount:, user:, group:, principal: o principalSet:."
+  }
+
+  validation {
+    condition     = alltrue([for r in var.egress_rules : length(r.resources) > 0 && alltrue([for p in r.resources : can(regex("^projects/[0-9]+$", p))])])
+    error_message = "Cada destino debe ser projects/<número>; no se permite '*'."
+  }
+
+  validation {
+    condition     = alltrue([for r in var.egress_rules : length(r.services) > 0 && alltrue([for s in r.services : can(regex("^[a-z0-9.-]+\\.googleapis\\.com$", s))])])
+    error_message = "Cada servicio de egreso debe tener la forma <api>.googleapis.com."
   }
 }

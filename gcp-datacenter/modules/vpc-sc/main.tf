@@ -1,8 +1,11 @@
 locals {
-  # Misma configuración para status (aplicado) o spec (dry-run); solo cambia el bloque que la recibe.
+  # Configuración única para status (aplicado) o spec (dry-run). HCL no permite compartir el cuerpo de un bloque,
+  # así que las reglas se arman aquí como datos y cada bloque dinámico solo las copia.
   config = {
     restricted_services = var.restricted_services
     resources           = [for p in var.member_projects : "projects/${p}"]
+    ingress             = length(var.ingress_identities) > 0 ? [{ identities = var.ingress_identities }] : []
+    egress              = var.egress_rules
   }
 }
 
@@ -20,10 +23,10 @@ resource "google_access_context_manager_service_perimeter" "perimeter" {
       resources           = status.value.resources
 
       dynamic "ingress_policies" {
-        for_each = length(var.ingress_identities) > 0 ? [1] : []
+        for_each = status.value.ingress
         content {
           ingress_from {
-            identities = var.ingress_identities
+            identities = ingress_policies.value.identities
             sources {
               access_level = "*"
             }
@@ -38,15 +41,21 @@ resource "google_access_context_manager_service_perimeter" "perimeter" {
       }
 
       dynamic "egress_policies" {
-        for_each = length(var.egress_identities) > 0 ? [1] : []
+        for_each = status.value.egress
         content {
           egress_from {
-            identities = var.egress_identities
+            identities = egress_policies.value.identities
           }
           egress_to {
-            resources = ["*"]
-            operations {
-              service_name = "*"
+            resources = egress_policies.value.resources
+            dynamic "operations" {
+              for_each = egress_policies.value.services
+              content {
+                service_name = operations.value
+                method_selectors {
+                  method = "*"
+                }
+              }
             }
           }
         }
@@ -61,10 +70,10 @@ resource "google_access_context_manager_service_perimeter" "perimeter" {
       resources           = spec.value.resources
 
       dynamic "ingress_policies" {
-        for_each = length(var.ingress_identities) > 0 ? [1] : []
+        for_each = spec.value.ingress
         content {
           ingress_from {
-            identities = var.ingress_identities
+            identities = ingress_policies.value.identities
             sources {
               access_level = "*"
             }
@@ -79,15 +88,21 @@ resource "google_access_context_manager_service_perimeter" "perimeter" {
       }
 
       dynamic "egress_policies" {
-        for_each = length(var.egress_identities) > 0 ? [1] : []
+        for_each = spec.value.egress
         content {
           egress_from {
-            identities = var.egress_identities
+            identities = egress_policies.value.identities
           }
           egress_to {
-            resources = ["*"]
-            operations {
-              service_name = "*"
+            resources = egress_policies.value.resources
+            dynamic "operations" {
+              for_each = egress_policies.value.services
+              content {
+                service_name = operations.value
+                method_selectors {
+                  method = "*"
+                }
+              }
             }
           }
         }
@@ -95,7 +110,7 @@ resource "google_access_context_manager_service_perimeter" "perimeter" {
     }
   }
 
-  # Los proyectos de app y datos los agrega 4-projects con recursos *_perimeter_resource / *_dry_run_resource.
+  # Los proyectos de app y datos se agregan con recursos *_perimeter_resource / *_dry_run_resource.
   lifecycle {
     ignore_changes = [status[0].resources, spec[0].resources]
   }
