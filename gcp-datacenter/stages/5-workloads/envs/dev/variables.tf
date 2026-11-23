@@ -79,3 +79,49 @@ variable "master_authorized_networks" {
   }))
   default = []
 }
+
+variable "primary_region" {
+  description = "Región principal de las cargas."
+  type        = string
+  default     = "us-central1"
+}
+
+variable "dr_region" {
+  description = "Región de DR: clúster GKE DR, réplica de Cloud SQL y segunda región del bucket."
+  type        = string
+  default     = "us-east4"
+}
+
+variable "enable_dr_cluster" {
+  description = "Clúster GKE DR en dr_region. null: true solo en prod."
+  type        = bool
+  default     = null
+}
+
+variable "gke_node_pools" {
+  description = "Pools de nodos de GKE. null: los del entorno (dev/qa e2-medium 1-2, prod e2-standard-2 1-3)."
+  type = map(object({
+    machine_type = string
+    min_count    = number
+    max_count    = number
+  }))
+  default = null
+}
+
+variable "sql_tier" {
+  description = "Tipo de máquina de Cloud SQL. null: el del entorno (dev/qa db-custom-1-3840, prod db-custom-2-7680)."
+  type        = string
+  default     = null
+}
+
+variable "image_family" {
+  description = "Familia de imagen endurecida de las VM del MIG. null: Debian 12 público (ADR 0008-i)."
+  type        = string
+  default     = null
+}
+
+variable "uptime_check_host" {
+  description = "Host HTTPS público de la aplicación para el uptime check. null no lo crea."
+  type        = string
+  default     = null
+}

@@ -17,3 +17,11 @@ enable_dr_replica   = true
 
 # Requiere la llave storage-us de 2-security y el valor "us" en gcp.resourceLocations (ADR 0002-d).
 bucket_dual_region = true
+
+# Opcionales. Sin valor, cada entorno usa sus tamaños (dev/qa: e2-medium 1-2 y db-custom-1-3840;
+# prod: e2-standard-2 1-3 y db-custom-2-7680) y prod crea el clúster GKE DR en us-east4.
+# gke_node_pools    = { default = { machine_type = "e2-standard-2", min_count = 1, max_count = 3 } }
+# sql_tier          = "db-custom-2-7680"
+# enable_dr_cluster = true
+# uptime_check_host = "app.example.com"
+# image_family      = "projects/<proyecto-de-imagenes>/global/images/family/<familia>"

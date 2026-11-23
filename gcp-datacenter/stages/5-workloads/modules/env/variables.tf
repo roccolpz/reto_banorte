@@ -24,7 +24,7 @@ variable "data_project_id" {
 }
 
 variable "hub_project_id" {
-  description = "Proyecto del hub (3-networks/hub); se agrega al metrics scope para la alerta de túneles VPN."
+  description = "Proyecto del hub (3-networks/hub); solo prod lo agrega al metrics scope para la alerta de túneles VPN."
   type        = string
 }
 
@@ -33,13 +33,94 @@ variable "network_self_link" {
   type        = string
 }
 
-variable "subnet" {
-  description = "Subred app de us-central1 (subnets[\"us-central1\"] de 3-networks/<env>)."
-  type = object({
+variable "subnets" {
+  description = "Subredes app por región (salida subnets de 3-networks/<env>). dev y qa solo tienen us-central1."
+  type = map(object({
     self_link           = string
     pods_range_name     = string
     services_range_name = string
-  })
+  }))
+}
+
+variable "primary_region" {
+  description = "Región principal: GKE, Cloud SQL, MIG y bucket regional."
+  type        = string
+  default     = "us-central1"
+
+  validation {
+    condition     = contains(keys(var.subnets), var.primary_region)
+    error_message = "primary_region debe tener subred en subnets."
+  }
+}
+
+variable "dr_region" {
+  description = "Región de DR: clúster GKE DR, réplica de Cloud SQL y segunda región del bucket."
+  type        = string
+  default     = "us-east4"
+
+  validation {
+    condition     = var.dr_region != var.primary_region
+    error_message = "dr_region debe ser distinta de primary_region."
+  }
+}
+
+variable "enable_dr_cluster" {
+  description = "Clúster GKE DR en dr_region. null: true solo en prod."
+  type        = bool
+  default     = null
+
+  validation {
+    condition     = !coalesce(var.enable_dr_cluster, var.env == "prod") || contains(keys(var.subnets), var.dr_region)
+    error_message = "enable_dr_cluster requiere una subred en dr_region (solo prod la tiene)."
+  }
+}
+
+variable "gke_node_pools" {
+  description = "Pools de nodos de GKE (también los del clúster DR). null: los del entorno (dev/qa e2-medium 1-2, prod e2-standard-2 1-3)."
+  type = map(object({
+    machine_type = string
+    min_count    = number
+    max_count    = number
+  }))
+  default = null
+}
+
+variable "sql_tier" {
+  description = "Tipo de máquina de Cloud SQL. null: el del entorno (dev/qa db-custom-1-3840, prod db-custom-2-7680)."
+  type        = string
+  default     = null
+}
+
+variable "image_family" {
+  description = "Familia de imagen de las VM del MIG. null: el default del módulo compute-mig (ADR 0008-i)."
+  type        = string
+  default     = null
+}
+
+variable "secure_tag_key" {
+  description = "Llave de las etiquetas seguras de firewall de la VPC del entorno, formato tagKeys/ID."
+  type        = string
+
+  validation {
+    condition     = startswith(var.secure_tag_key, "tagKeys/")
+    error_message = "secure_tag_key debe tener el formato tagKeys/ID."
+  }
+}
+
+variable "secure_tag_values" {
+  description = "Etiquetas seguras de 3-networks/<env> (secure_tag_values): gke-nodes y vm → tagValues/ID."
+  type        = map(string)
+
+  validation {
+    condition     = alltrue([for k in ["gke-nodes", "vm"] : startswith(lookup(var.secure_tag_values, k, ""), "tagValues/")])
+    error_message = "secure_tag_values debe incluir gke-nodes y vm con formato tagValues/ID."
+  }
+}
+
+variable "uptime_check_host" {
+  description = "Host HTTPS público de la aplicación para el uptime check. null no lo crea."
+  type        = string
+  default     = null
 }
 
 variable "service_accounts" {
@@ -63,7 +144,7 @@ variable "kms_keys" {
 }
 
 variable "regional" {
-  description = "true crea un clúster GKE regional (prod); false, zonal en us-central1-a."
+  description = "true crea clústeres GKE regionales (prod); false, zonales en la zona -a de la región."
   type        = bool
   default     = false
 }
@@ -84,7 +165,7 @@ variable "sql_ha" {
 }
 
 variable "enable_dr_replica" {
-  description = "Réplica de Cloud SQL en us-east4 con la llave sql-dr. null: true solo en prod."
+  description = "Réplica de Cloud SQL en dr_region con la llave sql-dr. null: true solo en prod."
   type        = bool
   default     = null
 
@@ -95,7 +176,7 @@ variable "enable_dr_replica" {
 }
 
 variable "bucket_dual_region" {
-  description = "Bucket dual-region US-CENTRAL1 + US-EAST4 con turbo replication. Requiere la llave storage-us (ADR 0002-d). null: true solo en prod."
+  description = "Bucket dual-region primary_region + dr_region con turbo replication. Requiere la llave storage-us (ADR 0002-d). null: true solo en prod."
   type        = bool
   default     = null
 
