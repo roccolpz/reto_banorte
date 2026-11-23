@@ -36,7 +36,7 @@ variable "machine_type" {
 }
 
 variable "image_family" {
-  description = "Familia de imagen endurecida de arranque (projects/<proyecto>/global/images/family/<familia>); debe soportar Shielded VM. Ver ADR 0008-i."
+  description = "Familia de imagen endurecida de arranque (projects/<proyecto>/global/images/family/<familia>); debe soportar Shielded VM. Ver ADR 0018-i."
   type        = string
   default     = "projects/debian-cloud/global/images/family/debian-12"
   nullable    = false

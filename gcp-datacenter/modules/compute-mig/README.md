@@ -1,6 +1,6 @@
 # Módulo `compute-mig`
 
-Plantilla de instancia endurecida (familia de imagen endurecida, ver ADR 0008-i; Shielded VM con secure boot, vTPM e
+Plantilla de instancia endurecida (familia de imagen endurecida, ver ADR 0018-i; Shielded VM con secure boot, vTPM e
 integrity monitoring; OS Login; puerto serie apagado; sin IP externa; SA dedicada; etiqueta segura para el firewall) y
 un MIG regional con health check TCP, autocuración y autoscaler por CPU. Por defecto mantiene una VM `e2-micro` que
 sirve para probar la conectividad privada hacia on-premises.

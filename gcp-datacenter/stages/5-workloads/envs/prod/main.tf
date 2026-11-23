@@ -22,7 +22,7 @@ data "terraform_remote_state" "network" {
 }
 
 # shortcut: 3-networks publica solo los valores (tagValues/ID) y resource_manager_tags pide también la llave;
-# se busca por el nombre que le da 3-networks (<prefix>-<env>-net-fw). Cambiar a una salida secure_tag_keys cuando el contrato la tenga (ADR 0009-i).
+# se busca por el nombre que le da 3-networks (<prefix>-<env>-net-fw). Cambiar a una salida secure_tag_keys cuando el contrato la tenga (ADR 0019-i).
 data "google_tags_tag_key" "firewall" {
   parent     = "projects/${local.network.host_project_id}"
   short_name = "${var.prefix}-${local.env}-net-fw"

@@ -115,7 +115,7 @@ variable "sql_tier" {
 }
 
 variable "image_family" {
-  description = "Familia de imagen endurecida de las VM del MIG. null: Debian 12 público (ADR 0008-i)."
+  description = "Familia de imagen endurecida de las VM del MIG. null: Debian 12 público (ADR 0018-i)."
   type        = string
   default     = null
 }

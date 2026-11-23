@@ -92,7 +92,7 @@ variable "sql_tier" {
 }
 
 variable "image_family" {
-  description = "Familia de imagen de las VM del MIG. null: el default del módulo compute-mig (ADR 0008-i)."
+  description = "Familia de imagen de las VM del MIG. null: el default del módulo compute-mig (ADR 0018-i)."
   type        = string
   default     = null
 }

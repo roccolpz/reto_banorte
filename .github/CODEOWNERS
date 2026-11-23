@@ -1,26 +1,44 @@
-# Dueños de código por etapa. Plantilla: reemplazar <org>/<equipo> por los equipos reales de GitHub
-# y quitar el "#" inicial. La protección de main debe exigir la revisión de los dueños.
+# Dueños de código por etapa (Fase 3, sección 3.2). La protección de main exige la revisión de los dueños.
+# Cada equipo de GitHub se llama como su grupo de Google. "acme" es la organización de GitHub de la entrega:
+# el repositorio debe vivir en una organización con estos equipos (ADR 0017-j). La última línea que coincide gana.
 #
-# Equipos sugeridos (mapean a los grupos de Google):
-#   plataforma -> gcp-org-admins
-#   seguridad  -> gcp-security-admins
-#   red        -> gcp-network-admins
-#
+#   gcp-org-admins       administración, etapa 0 y todo lo que no tenga dueño más específico
+#   gcp-security-admins  etapas 1 y 2, módulos de seguridad, políticas como código
+#   gcp-network-admins   etapa 3 y módulos de red
+#   gcp-devops           etapas 4 y 5, módulos de cómputo y datos, pruebas de integración
+
 # Por defecto
-# *                                         <org>/plataforma
-#
-# CI, políticas y configuración de lint
-# /.github/                                 <org>/plataforma <org>/seguridad
-# /gcp-datacenter/policies/                 <org>/seguridad
-# /gcp-datacenter/.checkov.yaml             <org>/seguridad
-#
+*                                               @acme/gcp-org-admins
+
+# CI, políticas y configuración de lint: cambiar un control de seguridad pide a seguridad
+/.github/                                       @acme/gcp-org-admins @acme/gcp-security-admins
+/gcp-datacenter/policies/                       @acme/gcp-security-admins
+/gcp-datacenter/.checkov.yaml                   @acme/gcp-security-admins
+/gcp-datacenter/.tflint.hcl                     @acme/gcp-security-admins
+
 # Etapas
-# /gcp-datacenter/stages/0-bootstrap/       <org>/plataforma <org>/seguridad
-# /gcp-datacenter/stages/1-org/             <org>/plataforma
-# /gcp-datacenter/stages/2-security/        <org>/seguridad
-# /gcp-datacenter/stages/3-networks/        <org>/red
-# /gcp-datacenter/stages/4-projects/        <org>/plataforma
-# /gcp-datacenter/stages/5-workloads/       <org>/plataforma
-#
+/gcp-datacenter/stages/0-bootstrap/             @acme/gcp-org-admins @acme/gcp-security-admins
+/gcp-datacenter/stages/1-org/                   @acme/gcp-security-admins
+/gcp-datacenter/stages/2-security/              @acme/gcp-security-admins
+/gcp-datacenter/stages/3-networks/              @acme/gcp-network-admins
+/gcp-datacenter/stages/4-projects/              @acme/gcp-devops
+/gcp-datacenter/stages/5-workloads/             @acme/gcp-devops
+
 # Módulos
-# /gcp-datacenter/modules/                  <org>/plataforma
+/gcp-datacenter/modules/kms/                    @acme/gcp-security-admins
+/gcp-datacenter/modules/vpc-sc/                 @acme/gcp-security-admins
+/gcp-datacenter/modules/network-hub/            @acme/gcp-network-admins
+/gcp-datacenter/modules/network-spoke/          @acme/gcp-network-admins
+/gcp-datacenter/modules/network-host/           @acme/gcp-network-admins
+/gcp-datacenter/modules/hybrid-connectivity/    @acme/gcp-network-admins
+/gcp-datacenter/modules/firewall/               @acme/gcp-network-admins
+/gcp-datacenter/modules/gke/                    @acme/gcp-devops
+/gcp-datacenter/modules/compute-mig/            @acme/gcp-devops
+/gcp-datacenter/modules/cloud-sql/              @acme/gcp-devops
+/gcp-datacenter/modules/storage/                @acme/gcp-devops
+/gcp-datacenter/modules/observability/          @acme/gcp-devops
+/gcp-datacenter/modules/project-factory/        @acme/gcp-devops
+
+# Pruebas
+/gcp-datacenter/test/                           @acme/gcp-devops
+/gcp-datacenter/tests/                          @acme/gcp-devops

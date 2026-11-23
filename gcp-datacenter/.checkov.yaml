@@ -12,6 +12,9 @@ skip-path:
   - modules/network-host
   # Fixtures de políticas (JSON de plan), no son código Terraform.
   - policies/testdata
+  # Fixtures de Terratest: proyecto efímero con mínimos (sin CMEK en GKE, bucket con force_destroy). Los módulos
+  # se escanean con la configuración real de las etapas.
+  - test
 skip-check:
   # PodSecurityPolicy se eliminó en GKE 1.25; la regla ya no aplica.
   - CKV_GCP_24

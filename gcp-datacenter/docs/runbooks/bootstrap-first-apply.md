@@ -71,6 +71,8 @@ Con las salidas de 0-bootstrap, en Settings > Secrets and variables > Actions > 
 | `TF_VAR_ORG_ID`, `TF_VAR_BILLING_ACCOUNT`, `TF_VAR_SUFFIX` | los mismos valores del `terraform.tfvars` |
 | `TF_LABELS_JSON` | `labels` del `terraform.tfvars` en JSON, p. ej. `{"app":"landing-zone","owner":"platform","cost_center":"infra"}` |
 | `NOTIFICATION_EMAIL` | correo que recibe las alertas de 5-workloads |
+| `AUDIT_RETENTION_LOCKED` | opcional; vacío = `true` (bloquea la retención de auditoría, ver abajo). `false` solo en organizaciones de prueba |
+| `TF_SA_TERRATEST`, `TEST_FOLDER_ID`, `TEST_BILLING_ACCOUNT`, `TEST_ACCESS_POLICY` | solo para la corrida nocturna de Terratest (`runbooks/terratest.md`) |
 
 Este comando imprime las variables `TF_SA_*` listas para copiar:
 
@@ -92,12 +94,26 @@ gcloud billing accounts add-iam-policy-binding <BILLING_ACCOUNT> \
   --member="group:gcp-billing-admins@<dominio>" --role="roles/billing.admin"
 ```
 
-## 5. Resto de etapas
+## 5. Activar Security Command Center (a mano, antes de 1-org)
+
+Terraform no puede activar SCC en la organización (ADR 0010-g). Si no está activo, el apply de 1-org falla al crear
+la notificación de hallazgos. Un administrador de la organización lo activa una vez en la consola: Security >
+Security Command Center > Get started, a nivel organización, nivel Standard (Premium es una contratación aparte).
+Comprueba que la página de SCC de la organización muestre hallazgos o el resumen de activos antes de seguir.
+
+## 6. Resto de etapas
 
 Opción A, por el pipeline: ejecuta el workflow `apply` con "Run workflow" (aplica todas las raíces en orden).
 Aprueba los jobs de prod cuando lleguen; las etapas comunes también corren en `prod`.
-Al terminar, vuelve a ejecutarlo (o solo 2-security) para que 2-security agregue los proyectos de dev y qa a sus
-perímetros (ADR 0007-f).
+Al terminar, vuelve a ejecutarlo (o solo 2-security). La primera corrida de 2-security no encuentra el estado de
+`4-projects/<env>` y omite lo que depende de él. La segunda crea:
+
+- los proyectos de app y datos de dev y qa dentro de sus perímetros (ADR 0007-f);
+- `secretAccessor` de `app_workload` y `vm` sobre los secretos de cada entorno, y la regla de egreso de cada
+  perímetro hacia el proyecto `backup` (ADR 0013-g).
+
+Hasta esa segunda corrida, las cargas no leen secretos. Repite 2-security cada vez que crees o recrees
+`4-projects` de un entorno.
 
 Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 `terraform init -backend-config="bucket=$BUCKET"` y `terraform apply` en cada raíz:
@@ -108,25 +124,49 @@ Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 4. `3-networks/envs/dev`, `4-projects/envs/dev`, `5-workloads/envs/dev`
 5. lo mismo para `qa`
 6. lo mismo para `prod`
-7. `2-security` otra vez: agrega los proyectos de app y datos de dev y qa a sus perímetros (ADR 0007-f).
+7. `2-security` otra vez: perímetros de dev y qa, accesores de secretos y egreso de los tres entornos
+   (ADR 0007-f y 0013-g).
 
 Cada raíz de etapa ≥1 recibe `state_bucket` (`export TF_VAR_state_bucket=$BUCKET`).
 
-### Entrega real: bloquear la retención de auditoría
+Lectura del estado: en el pipeline, cada SA de etapa solo lee los prefijos que consume, listados en
+`local.state_read_prefixes` de `stages/0-bootstrap/main.tf` (ADR 0008-g); la SA de plan lee todo. Un 403 al leer
+el estado de otra etapa significa que falta el prefijo en esa lista: agrégalo y aplica 0-bootstrap a mano.
 
-`audit_retention_locked` queda en `false` por default para que los entornos de prueba se puedan destruir, y el
-workflow `apply` no la pasa. En la entrega real, aplica `1-org` a mano una vez con el bloqueo:
+En la opción B, exporta también `TF_VAR_audit_retention_locked=true` antes de aplicar `1-org` (ver abajo).
 
-```bash
-export TF_VAR_audit_retention_locked=true
-terraform -chdir=stages/1-org apply
-```
+### Primer apply de `3-networks/hub`: la IP del forwarder DNS
+
+El hub lee la IP que GCP reserva para la política DNS entrante de `onprem-sim` (propósito `DNS_RESOLVER`). En el
+primer apply esa IP a veces todavía no existe y el apply se detiene en la postcondición con el mensaje
+"GCP aún no reservó la IP DNS_RESOLVER del forwarder entrante de onprem-sim…". No es un error de configuración:
+
+1. Espera un minuto.
+2. Vuelve a correr el apply de `3-networks/hub` (en el pipeline: "Re-run failed jobs"; a mano: `terraform apply`).
+
+Si falla otra vez después de unos minutos, define `onprem_dns_target_ips` con la IP del DNS de on-prem y aplica
+(ver "Riesgos abiertos" en `stages/3-networks/README.md`).
+
+### Firewall de los entornos
+
+Cada entorno usa una política de firewall de red con etiquetas seguras `gke-nodes` y `vm`, no reglas de VPC.
+On-prem (`192.168.0.0/16`) solo puede iniciar conexiones TCP 80 y 443 hacia esas cargas, con logging. Una VM o
+nodo sin etiqueta no recibe ingreso. La tabla completa de reglas está en `stages/3-networks/README.md`.
+
+### Retención de auditoría bloqueada (1-org)
+
+El pipeline (`_tf-apply.yml`, `ci.yml` y `drift.yml`) pasa `TF_VAR_audit_retention_locked=true` a 1-org, así que
+el primer apply por el pipeline bloquea la retención del bucket de auditoría. En Terraform el default sigue en
+`false` para que un apply a mano en una organización de prueba no lo bloquee por accidente.
 
 Es irreversible: el bucket de auditoría no se puede borrar ni acortar su retención hasta que venza (contrato §8).
-Las corridas posteriores del pipeline con `false` no lo desbloquean, pero `plan` muestra la diferencia; deja la
-variable en `true` también en `stages/1-org/terraform.tfvars` de la entrega.
 
-## 6. Comprobar
+- **Entrega real:** no definas `AUDIT_RETENTION_LOCKED` (vacío = `true`). En la opción B, exporta
+  `TF_VAR_audit_retention_locked=true` antes del apply de `1-org`.
+- **Organización de prueba que se va a destruir:** define la variable del repositorio
+  `AUDIT_RETENTION_LOCKED=false` antes del primer apply. Cambiarla después no desbloquea un bucket ya bloqueado.
+
+## 7. Comprobar
 
 - Un segundo `plan` en cada raíz dice `No changes.`
 - `tests/e2e/connectivity.sh` pasa contra prod.

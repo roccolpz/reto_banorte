@@ -1,4 +1,4 @@
-# ADR 0008-i: de dónde sale la imagen endurecida de las VM del MIG
+# ADR 0018-i: de dónde sale la imagen endurecida de las VM del MIG
 
 - Estado: aceptada
 - Fecha: 2026-11-23

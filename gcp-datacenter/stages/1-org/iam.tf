@@ -147,6 +147,8 @@ locals {
         { scope = "folder", key = e, role = "roles/storage.admin" },
         { scope = "folder", key = e, role = "roles/compute.networkUser" },
         { scope = "folder", key = e, role = "roles/monitoring.editor" },
+        # 5-workloads busca por nombre la tag key de firewall en el net-host (ADR 0019-i).
+        { scope = "project", key = "net-host-${e}", role = "roles/resourcemanager.tagViewer" },
         # Agregar net_hub al metrics scope del proyecto de app exige monitoring.metricsScopes.link también en net_hub;
         # monitoring.viewer/editor no lo incluyen y metricsScopesAdmin es el rol predefinido más chico que sí.
         { scope = "project", key = "net_hub", role = "roles/monitoring.metricsScopesAdmin" },

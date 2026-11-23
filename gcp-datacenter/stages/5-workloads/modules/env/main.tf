@@ -58,7 +58,7 @@ module "gke" {
   labels                     = var.labels
 }
 
-# Clúster en espera en la región DR (R11). Sin llave gke-dr en esa región, etcd queda sin CMEK (ADR 0009-i).
+# Clúster en espera en la región DR (R11). Sin llave gke-dr en esa región, etcd queda sin CMEK (ADR 0019-i).
 module "gke_dr" {
   source = "../../../../modules/gke"
   count  = local.enable_dr_cluster ? 1 : 0
