@@ -32,9 +32,11 @@ de los otros entornos. No hace falta peering ni un ADR de excepción.
 
 - `onprem-sim` y las VPN viven en el proyecto `net_hub`: NCC exige que los túneles de un spoke
   híbrido estén en el mismo proyecto que el hub.
-- La SA de cada `3-networks-<env>` necesita, sobre el proyecto `net_hub`:
-  `roles/dns.peer` (zona de peering de `corp.acme.internal.`) y permiso para crear spokes en el hub
-  (`roles/networkconnectivity.spokeAdmin` o equivalente). Los otorga 0-bootstrap o 1-org.
+- IAM que 1-org ya otorga: `roles/dns.peer` en `net_hub` para cada `3-networks-<env>`.
+- IAM que falta en 1-org (`iam.tf`):
+  - `3-networks-hub`: `roles/networkconnectivity.hubAdmin` en `net_hub` (hub, grupo y spokes híbridos).
+  - `3-networks-<env>`: `roles/networkconnectivity.spokeAdmin` en su proyecto host y
+    `roles/networkconnectivity.groupUser` en `net_hub` (unir el VPC spoke al grupo `edge`).
 - APIs en `net_hub` y proyectos host: `compute`, `dns`, `networkconnectivity`, `servicenetworking`.
 
 ## Riesgos abiertos
