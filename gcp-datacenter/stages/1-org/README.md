@@ -42,7 +42,8 @@ El proveedor factura las cuotas al proyecto semilla (`billing_project` con `user
 ## Advertencias
 
 - `audit_retention_locked = true` es irreversible: el bucket no se puede borrar ni acortar su
-  retención hasta que venza. Dejarlo en `false` mientras el entorno sea de prueba.
+  retención hasta que venza. Dejarlo en `false` mientras el entorno sea de prueba; en la entrega real se
+  activa con `TF_VAR_audit_retention_locked=true` (`docs/runbooks/bootstrap-first-apply.md`).
 - `gcp.resourceLocations` permite los grupos de us-central1 y us-east4 más el valor `us`/`US`
   (no todo `in:us-locations`). Cualquier otra multi-región o región queda bloqueada.
 - Los nombres de rol de `iam.tf` no se verificaron contra la API (no hay credenciales en el

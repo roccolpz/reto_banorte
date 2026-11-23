@@ -165,9 +165,9 @@ Nombres exactos; los consumidores dependen de ellos.
 
 ## 8. Recursos irreversibles o caros (defaults seguros)
 
-- Retención bloqueada del bucket de auditoría: `var.audit_retention_locked`, default `false`; el ejemplo de prod lo pone `true`. Bloquear es irreversible.
+- Retención bloqueada del bucket de auditoría: `var.audit_retention_locked`, default `false`. En la entrega real se aplica 1-org con `TF_VAR_audit_retention_locked=true` (`docs/runbooks/bootstrap-first-apply.md`). Bloquear es irreversible.
 - VPC-SC: `var.vpc_sc_enforce`, default `false` (dry-run) para no romper el pipeline; ingreso explícito para las SA de las etapas.
-- Cloud SQL: HA y réplica DR (`var.sql_ha`, `var.enable_dr_replica`) en `false` por default; `true` en el ejemplo de prod.
+- Cloud SQL: HA y réplica DR (`var.sql_ha`, `var.enable_dr_replica`) y bucket dual-region (`var.bucket_dual_region`) con default `null`: `true` en prod, `false` en dev/qa, para que el pipeline sin tfvars no despliegue prod sin ellos.
 - GKE: zonal en dev/qa, regional en prod (`var.regional`). Máquinas pequeñas por default.
 - `deletion_protection` configurable; default `false` en dev/qa para que `terraform destroy` en dev limpie todo.
 - Llaves KMS no se borran en GCP: los nombres de keyring llevan `suffix`.

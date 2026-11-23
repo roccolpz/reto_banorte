@@ -112,6 +112,20 @@ Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 
 Cada raíz de etapa ≥1 recibe `state_bucket` (`export TF_VAR_state_bucket=$BUCKET`).
 
+### Entrega real: bloquear la retención de auditoría
+
+`audit_retention_locked` queda en `false` por default para que los entornos de prueba se puedan destruir, y el
+workflow `apply` no la pasa. En la entrega real, aplica `1-org` a mano una vez con el bloqueo:
+
+```bash
+export TF_VAR_audit_retention_locked=true
+terraform -chdir=stages/1-org apply
+```
+
+Es irreversible: el bucket de auditoría no se puede borrar ni acortar su retención hasta que venza (contrato §8).
+Las corridas posteriores del pipeline con `false` no lo desbloquean, pero `plan` muestra la diferencia; deja la
+variable en `true` también en `stages/1-org/terraform.tfvars` de la entrega.
+
 ## 6. Comprobar
 
 - Un segundo `plan` en cada raíz dice `No changes.`
