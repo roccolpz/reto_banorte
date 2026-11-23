@@ -81,9 +81,21 @@ variable "bgp_cidrs" {
 }
 
 variable "ncc_hub_id" {
-  description = "ID del hub de NCC. Si no es null, los túneles del lado GCP se registran como spoke híbrido en el grupo `center`."
+  description = "ID del hub de NCC donde se registra el spoke híbrido (grupo `center`)."
   type        = string
   default     = null
+}
+
+# Bool aparte de ncc_hub_id: el id del hub suele ser desconocido hasta el apply y no puede decidir un count.
+variable "create_ncc_spoke" {
+  description = "true registra los túneles del lado GCP como spoke híbrido de NCC. Requiere ncc_hub_id."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.create_ncc_spoke || var.ncc_hub_id != null
+    error_message = "create_ncc_spoke = true requiere ncc_hub_id."
+  }
 }
 
 variable "labels" {

@@ -8,7 +8,7 @@ HA VPN con BGP entre la VPC del hub y una VPC par en una región. Como on-prem s
   (`.1` lado hub, `.2` lado on-prem).
 - Anuncio `CUSTOM`: subredes propias más `advertised_ranges` (hub: `10.0.0.0/8` y `35.199.192.0/19`,
   este último para que on-prem devuelva las respuestas del reenvío DNS de Cloud DNS).
-- Si `ncc_hub_id` no es null, los túneles del hub se registran como spoke híbrido de NCC en el grupo
+- Con `create_ncc_spoke = true` (y `ncc_hub_id`), los túneles del hub se registran como spoke híbrido de NCC en el grupo
   `center`, con `include_import_ranges = ["ALL_IPV4_RANGES"]` y sin site-to-site.
 
 **Secreto compartido:** se genera con `random_password` (32 caracteres, uno por par de túneles). No
@@ -30,6 +30,7 @@ module "vpn" {
   advertised_ranges      = ["10.0.0.0/8", "35.199.192.0/19"]
   peer_advertised_ranges = ["192.168.0.0/16"]
   ncc_hub_id             = module.hub.ncc_hub_id
+  create_ncc_spoke       = true
   labels                 = local.labels
 }
 ```
@@ -54,6 +55,7 @@ Ejemplo completo: [examples/basic](examples/basic/main.tf).
 | peer_advertised_ranges | Rangos extra que anuncia on-prem. | `list(string)` | `[]` | no |
 | bgp_cidrs | Dos /30 en 169.254.0.0/16, únicos por región. | `list(string)` | `["169.254.0.0/30", "169.254.1.0/30"]` | no |
 | ncc_hub_id | Hub de NCC para el spoke híbrido. | `string` | `null` | no |
+| create_ncc_spoke | Registra el spoke híbrido; un bool porque el id del hub se conoce recién en el apply. | `bool` | `false` | no |
 
 ## Outputs
 

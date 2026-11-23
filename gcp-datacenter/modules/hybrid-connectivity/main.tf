@@ -145,7 +145,7 @@ resource "google_compute_router_peer" "peer" {
 # Spoke híbrido: va al grupo center de la topología STAR para que los spokes de entorno (edge)
 # aprendan las rutas on-prem sin verse entre sí. Requiere el mismo proyecto que el hub.
 resource "google_network_connectivity_spoke" "vpn" {
-  count = var.ncc_hub_id == null ? 0 : 1
+  count = var.create_ncc_spoke ? 1 : 0
 
   project  = var.project_id
   location = var.region

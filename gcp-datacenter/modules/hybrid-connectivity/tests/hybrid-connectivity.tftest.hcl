@@ -11,6 +11,7 @@ variables {
   advertised_ranges      = ["10.0.0.0/8", "35.199.192.0/19"]
   peer_advertised_ranges = ["192.168.0.0/16"]
   ncc_hub_id             = "projects/acme-common-net-hub-0000/locations/global/hubs/acme-common-net-hub"
+  create_ncc_spoke       = true
   labels = {
     env         = "common"
     app         = "network"
@@ -87,13 +88,23 @@ run "no_spoke_without_hub" {
   command = plan
 
   variables {
-    ncc_hub_id = null
+    create_ncc_spoke = false
   }
 
   assert {
     condition     = length(google_network_connectivity_spoke.vpn) == 0
-    error_message = "Sin ncc_hub_id no debe crearse spoke."
+    error_message = "Con create_ncc_spoke = false no debe crearse spoke."
   }
+}
+
+run "spoke_requires_hub_id" {
+  command = plan
+
+  variables {
+    ncc_hub_id = null
+  }
+
+  expect_failures = [var.create_ncc_spoke]
 }
 
 run "rejects_bad_bgp_cidrs" {
