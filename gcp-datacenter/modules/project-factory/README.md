@@ -4,13 +4,12 @@ Crea un proyecto de GCP dentro de una carpeta, lo liga a la cuenta de facturaci�
 y, si se indica, lo adjunta como proyecto de servicio a una Shared VPC.
 
 Lo usan `stages/0-bootstrap` (proyecto semilla), `stages/1-org` (proyectos de `common` y `net-host`),
-`stages/4-projects` y la raíz legada `stages/test-orchestration`.
+y `stages/4-projects`.
 
 Decisiones:
 
 - `auto_create_network = false` por defecto: la red `default` no se crea; las redes las define `3-networks`.
-- `labels` valida las cinco llaves obligatorias del contrato (`env`, `app`, `owner`, `cost_center`, `managed_by`).
-  Un mapa vacío se acepta solo por compatibilidad con `test-orchestration`; las etapas nuevas siempre pasan etiquetas.
+- `labels` es obligatorio y valida las cinco llaves del contrato (`env`, `app`, `owner`, `cost_center`, `managed_by`).
 - Las APIs no se deshabilitan al destruir (`disable_on_destroy = false`) para no romper recursos que dependan de ellas.
 
 ## Uso
@@ -59,7 +58,7 @@ Ejemplo completo en [`examples/basic`](examples/basic/main.tf).
 | billing_account | ID de la cuenta de facturación | `string` | n/a | yes |
 | shared_vpc_host_project_id | Proyecto host de Shared VPC; vacío para no adjuntar | `string` | `""` | no |
 | activate_apis | APIs a habilitar | `list(string)` | `["compute.googleapis.com", "container.googleapis.com"]` | no |
-| labels | Etiquetas; deben incluir `env`, `app`, `owner`, `cost_center`, `managed_by` | `map(string)` | `{}` | no |
+| labels | Etiquetas; deben incluir `env`, `app`, `owner`, `cost_center`, `managed_by` | `map(string)` | n/a | sí |
 | auto_create_network | Crear la red `default` | `bool` | `false` | no |
 | deletion_policy | `DELETE`, `PREVENT` o `ABANDON` | `string` | `"DELETE"` | no |
 
