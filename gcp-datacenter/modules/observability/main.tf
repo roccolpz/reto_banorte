@@ -28,6 +28,7 @@ resource "google_monitoring_notification_channel" "email" {
   project      = var.project_id
   display_name = "${var.name_prefix} correo de alertas"
   type         = "email"
+  user_labels  = var.labels
   labels = {
     email_address = var.notification_email
   }
@@ -75,6 +76,7 @@ resource "google_monitoring_uptime_check_config" "this" {
   display_name = "${var.name_prefix} uptime ${var.uptime_check_host}"
   timeout      = "10s"
   period       = "60s"
+  user_labels  = var.labels
 
   http_check {
     path         = "/"

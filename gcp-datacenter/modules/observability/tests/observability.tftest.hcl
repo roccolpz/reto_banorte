@@ -19,6 +19,11 @@ run "canal_y_tres_alertas_por_defecto" {
   }
 
   assert {
+    condition     = google_monitoring_notification_channel.email.user_labels == var.labels
+    error_message = "El canal lleva las etiquetas obligatorias en user_labels (policies/labels.rego)."
+  }
+
+  assert {
     condition     = toset(keys(google_monitoring_alert_policy.this)) == toset(["gke_node_cpu", "sql_cpu", "vpn_tunnel_down"])
     error_message = "Por defecto se crean las alertas de CPU de nodos GKE, CPU de Cloud SQL y túnel VPN caído."
   }
@@ -59,6 +64,11 @@ run "uptime_y_metrica_de_logs_opcionales" {
   assert {
     condition     = google_monitoring_uptime_check_config.this[0].monitored_resource[0].labels["host"] == "app.example.com"
     error_message = "El uptime check apunta al host dado."
+  }
+
+  assert {
+    condition     = google_monitoring_uptime_check_config.this[0].user_labels == var.labels
+    error_message = "El uptime check lleva las etiquetas obligatorias en user_labels (policies/labels.rego)."
   }
 
   assert {
