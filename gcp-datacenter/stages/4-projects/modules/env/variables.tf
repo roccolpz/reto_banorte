@@ -92,8 +92,9 @@ variable "deployer_roles" {
       "roles/monitoring.metricsScopesAdmin",
       "roles/logging.configWriter",
     ]
+    # data entra al metrics scope de app: el link exige monitoring.metricsScopes.link en ambos proyectos.
     data = [
-      "roles/monitoring.viewer",
+      "roles/monitoring.metricsScopesAdmin",
     ]
   }
 }

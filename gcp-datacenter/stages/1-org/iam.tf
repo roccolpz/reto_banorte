@@ -122,8 +122,9 @@ locals {
         { scope = "folder", key = e, role = "roles/iam.serviceAccountUser" },
         { scope = "folder", key = e, role = "roles/compute.networkUser" },
         { scope = "folder", key = e, role = "roles/monitoring.editor" },
-        # Agregar net_hub al metrics scope del proyecto de app exige leer su monitoreo.
-        { scope = "project", key = "net_hub", role = "roles/monitoring.viewer" },
+        # Agregar net_hub al metrics scope del proyecto de app exige monitoring.metricsScopes.link también en net_hub;
+        # monitoring.viewer/editor no lo incluyen y metricsScopesAdmin es el rol predefinido más chico que sí.
+        { scope = "project", key = "net_hub", role = "roles/monitoring.metricsScopesAdmin" },
       ]
     },
   )

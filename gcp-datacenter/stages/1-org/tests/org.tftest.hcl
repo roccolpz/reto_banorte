@@ -136,7 +136,7 @@ run "org_policies_y_firewall_jerarquico" {
   }
 
   assert {
-    condition     = contains(keys(google_project_iam_member.this), "5-workloads-dev|project|net_hub|roles/monitoring.viewer")
+    condition     = contains(keys(google_project_iam_member.this), "5-workloads-dev|project|net_hub|roles/monitoring.metricsScopesAdmin")
     error_message = "La SA de 5-workloads-<env> agrega net_hub a su metrics scope."
   }
 

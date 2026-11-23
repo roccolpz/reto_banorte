@@ -60,6 +60,12 @@ run "proyectos_iam_y_perimetro_dry_run" {
   }
 
   assert {
+    condition = alltrue([for d in ["app", "data"] :
+    contains(keys(google_project_iam_member.deployer), "${d}/roles/monitoring.metricsScopesAdmin")])
+    error_message = "La SA de 5-workloads necesita monitoring.metricsScopes.link en app (scoping) y en data (monitoreado)."
+  }
+
+  assert {
     condition     = google_project_iam_member.workload_roles["app_workload/data/roles/cloudsql.client"].project == "acme-prod-data-ab12"
     error_message = "app_workload recibe cloudsql.client en el proyecto de datos."
   }
