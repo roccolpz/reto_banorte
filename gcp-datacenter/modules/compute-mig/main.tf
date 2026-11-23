@@ -6,8 +6,11 @@ resource "google_compute_instance_template" "this" {
   tags         = var.network_tags
   labels       = var.labels
 
+  # Etiqueta segura (tagKeys/ID = tagValues/ID) que seleccionan las reglas de la política de firewall.
+  resource_manager_tags = var.resource_manager_tags
+
   disk {
-    source_image = var.source_image
+    source_image = var.image_family
     auto_delete  = true
     boot         = true
     disk_size_gb = 10
@@ -28,6 +31,7 @@ resource "google_compute_instance_template" "this" {
     {
       enable-oslogin         = "TRUE"
       block-project-ssh-keys = "TRUE"
+      serial-port-enable     = "FALSE"
     },
     var.startup_script == null ? {} : { startup-script = var.startup_script },
   )
@@ -61,7 +65,6 @@ resource "google_compute_region_instance_group_manager" "this" {
   project            = var.project_id
   region             = var.region
   base_instance_name = var.name
-  target_size        = var.target_size
 
   version {
     instance_template = google_compute_instance_template.this.id
@@ -77,5 +80,23 @@ resource "google_compute_region_instance_group_manager" "this" {
     minimal_action        = "REPLACE"
     max_surge_fixed       = 3
     max_unavailable_fixed = 0
+  }
+}
+
+# El autoscaler fija el número de VM; el MIG no lleva target_size para no pelear con él.
+resource "google_compute_region_autoscaler" "this" {
+  name    = "${var.name}-as"
+  project = var.project_id
+  region  = var.region
+  target  = google_compute_region_instance_group_manager.this.id
+
+  autoscaling_policy {
+    min_replicas    = var.min_replicas
+    max_replicas    = var.max_replicas
+    cooldown_period = 90
+
+    cpu_utilization {
+      target = var.cpu_target
+    }
   }
 }
