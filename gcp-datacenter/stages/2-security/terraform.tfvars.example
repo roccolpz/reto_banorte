@@ -14,7 +14,7 @@ labels = {
 access_policy_name   = "000000000000"
 create_access_policy = false
 
-# Dry-run por default. Pasar a true solo después de revisar las violaciones registradas.
-vpc_sc_enforce = false
+# Dry-run por default, por entorno. Pasar un entorno a true solo después de revisar sus violaciones registradas.
+vpc_sc_enforce = { dev = false, qa = false, prod = false }
 
 secret_names = ["db-app-password"]
