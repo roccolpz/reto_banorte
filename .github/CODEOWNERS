@@ -1,0 +1,26 @@
+# Dueños de código por etapa. Plantilla: reemplazar <org>/<equipo> por los equipos reales de GitHub
+# y quitar el "#" inicial. La protección de main debe exigir la revisión de los dueños.
+#
+# Equipos sugeridos (mapean a los grupos de Google):
+#   plataforma -> gcp-org-admins
+#   seguridad  -> gcp-security-admins
+#   red        -> gcp-network-admins
+#
+# Por defecto
+# *                                         <org>/plataforma
+#
+# CI, políticas y configuración de lint
+# /.github/                                 <org>/plataforma <org>/seguridad
+# /gcp-datacenter/policies/                 <org>/seguridad
+# /gcp-datacenter/.checkov.yaml             <org>/seguridad
+#
+# Etapas
+# /gcp-datacenter/stages/0-bootstrap/       <org>/plataforma <org>/seguridad
+# /gcp-datacenter/stages/1-org/             <org>/plataforma
+# /gcp-datacenter/stages/2-security/        <org>/seguridad
+# /gcp-datacenter/stages/3-networks/        <org>/red
+# /gcp-datacenter/stages/4-projects/        <org>/plataforma
+# /gcp-datacenter/stages/5-workloads/       <org>/plataforma
+#
+# Módulos
+# /gcp-datacenter/modules/                  <org>/plataforma
