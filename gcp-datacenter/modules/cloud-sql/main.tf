@@ -16,6 +16,7 @@ resource "google_sql_database_instance" "primary" {
 
   settings {
     tier                        = var.tier
+    edition                     = "ENTERPRISE"
     availability_type           = var.ha ? "REGIONAL" : "ZONAL"
     disk_type                   = "PD_SSD"
     disk_size                   = var.disk_size_gb
@@ -65,6 +66,7 @@ resource "google_sql_database_instance" "replica" {
 
   settings {
     tier                        = var.tier
+    edition                     = "ENTERPRISE"
     availability_type           = "ZONAL"
     disk_type                   = "PD_SSD"
     disk_autoresize             = true
