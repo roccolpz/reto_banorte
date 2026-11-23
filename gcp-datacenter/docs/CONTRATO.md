@@ -134,6 +134,7 @@ Nombres exactos; los consumidores dependen de ellos.
 - `access_policy_name` (string, número)
 - `perimeter_names` (map(string)): `dev`, `qa`, `prod` → `accessPolicies/<n>/servicePerimeters/<nombre>`
 - Los perímetros ignoran cambios en sus listas de recursos (`lifecycle.ignore_changes`); 4-projects agrega los proyectos de app y datos.
+- Los proyectos `net-host` no entran a los perímetros VPC-SC: solo los de app y datos, que agrega 4-projects.
 
 **3-networks/hub**
 - `hub_project_id`, `hub_network_id`, `hub_network_self_link`, `ncc_hub_id` (strings)
