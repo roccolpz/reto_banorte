@@ -1,0 +1,14 @@
+# Copiar a terraform.tfvars (ignorado por git) y reemplazar los valores de ejemplo.
+org_id          = "000000000000"
+billing_account = "000000-000000-000000"
+suffix          = "a1b2"
+
+# prefix            = "acme"
+# region            = "us-central1"
+# github_repository = "roccolpz/reto_banorte"
+
+labels = {
+  app         = "landing-zone"
+  owner       = "plataforma"
+  cost_center = "cc-0000"
+}

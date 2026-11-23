@@ -1,0 +1,26 @@
+# Copiar a terraform.tfvars (ignorado por git) y reemplazar los valores de ejemplo.
+org_id          = "000000000000"
+billing_account = "000000-000000-000000"
+state_bucket    = "acme-bootstrap-tfstate-a1b2" # salida state_bucket de 0-bootstrap
+suffix          = "a1b2"
+
+# prefix                 = "acme"
+# region                 = "us-central1"
+# audit_retention_days   = 365
+# audit_retention_locked = false # true es IRREVERSIBLE
+
+labels = {
+  app         = "landing-zone"
+  owner       = "plataforma"
+  cost_center = "cc-0000"
+}
+
+# Sin grupos no se crean bindings humanos. Llaves válidas: org_admins, billing_admins,
+# security_admins, network_admins, devops, developers, auditors.
+# groups = {
+#   org_admins = "gcp-org-admins@example.com"
+#   auditors   = "gcp-auditors@example.com"
+# }
+
+# IDs de cliente de Cloud Identity. Vacío: no se aplica iam.allowedPolicyMemberDomains.
+# allowed_policy_member_customer_ids = ["C00000000"]
