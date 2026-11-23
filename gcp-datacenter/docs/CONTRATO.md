@@ -109,7 +109,7 @@ Toda raíz de etapa ≥1 recibe `var.state_bucket` (string).
 
 - dev y qa solo en us-central1. prod en us-central1 y us-east4 (misma VPC, dos subredes app).
 - Cloud NAT por región y por VPC de entorno (prod: dos).
-- GKE master CIDR: dev `172.16.10.0/28`, qa `172.16.20.0/28`, prod `172.16.30.0/28`.
+- GKE master CIDR: dev `172.16.10.0/28`, qa `172.16.20.0/28`, prod `172.16.30.0/28`, prod DR (us-east4) `172.16.31.0/28`.
 - Las variables de CIDR validan con `can(cidrhost(...))` y que no se solapen con `192.168.0.0/16`.
 
 ## 6. Salidas por etapa (interfaz entre frentes)
@@ -127,12 +127,14 @@ Nombres exactos; los consumidores dependen de ellos.
 - `common_project_ids` (map(string)): `net_hub`, `logging`, `security`, `backup`
 - `net_host_project_ids` (map(string)): `dev`, `qa`, `prod` (proyectos ya habilitados como Shared VPC host por 1-org NO; los habilita 3-networks)
 - `audit_log_bucket` (string)
+- `custom_role_ids` (map(string)): `kms_key_iam_admin`, `tag_value_iam_admin` → `organizations/<id>/roles/<nombre>` (roles mínimos para que 4-projects otorgue permisos sobre llaves y valores de etiqueta sin poder destruirlos)
 
 **2-security**
 - `kms_keys` (map(map(string))): `[env][purpose]` → id de llave; `purpose` ∈ `storage`, `sql`, `gke`; regiones: llaves us-central1; prod además `sql-dr` en us-east4 y `storage-us` en la multi-región us (ADR 0002-d)
 - `secret_ids` (map(map(string))): `[env][nombre]` → id del secreto (contenedor sin versión)
 - `access_policy_name` (string, número)
 - `perimeter_names` (map(string)): `dev`, `qa`, `prod` → `accessPolicies/<n>/servicePerimeters/<nombre>`
+- `vpc_sc_enforce` (map(bool)): `dev`, `qa`, `prod` → `true` si el perímetro está en modo aplicado (4-projects lo lee; no se declara otra vez)
 - Los perímetros ignoran cambios en sus listas de recursos (`lifecycle.ignore_changes`). Los proyectos de app y datos de prod los agrega 4-projects-prod; los de dev y qa, 2-security leyendo `4-projects/<env>` (ADR 0007-f).
 - Los proyectos `net-host` no entran a los perímetros VPC-SC: solo los de app y datos.
 
@@ -144,6 +146,7 @@ Nombres exactos; los consumidores dependen de ellos.
 - `host_project_id`, `network_id`, `network_self_link`, `network_name` (strings)
 - `subnets` (map(object)): llave = región (`us-central1`, `us-east4`) → `{ id, self_link, name, cidr, pods_range_name, services_range_name }`
 - `psa_connection_id` (string), `dns_zone_name` (string), `dns_domain` (string, `<env>.gcp.acme.internal.`)
+- `secure_tag_values` (map(string)): `gke-nodes`, `vm` → `tagValues/<id>` (etiquetas seguras con propósito `GCE_FIREWALL` ligadas a la VPC del entorno; las reglas de firewall apuntan a ellas)
 
 **4-projects/envs/<env>**
 - `app_project_id`, `app_project_number`, `data_project_id`, `data_project_number` (strings)
@@ -151,6 +154,7 @@ Nombres exactos; los consumidores dependen de ellos.
 
 **5-workloads/envs/<env>**
 - `gke_cluster_name`, `sql_instance_name`, `sql_private_ip`, `bucket_name`, `mig_name` (strings, los que apliquen)
+- `gke_dr_cluster_name` (string, solo prod; `null` en dev y qa)
 
 ## 7. Identidad y CI
 
