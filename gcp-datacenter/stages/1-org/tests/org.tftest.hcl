@@ -141,6 +141,14 @@ run "org_policies_y_firewall_jerarquico" {
   }
 
   assert {
+    condition = (
+      contains(keys(google_organization_iam_member.this), "4-projects-prod|org|org|roles/accesscontextmanager.policyEditor") &&
+      length([for k in keys(google_organization_iam_member.this) : k if strcontains(k, "accesscontextmanager.policyEditor") && !startswith(k, "4-projects-prod|")]) == 0
+    )
+    error_message = "Solo 4-projects-prod edita perímetros: la política de acceso guarda también el de prod (ADR 0007-f)."
+  }
+
+  assert {
     condition     = length([for k in keys(google_folder_iam_member.this) : k if startswith(k, "5-workloads-dev|folder|prod|")]) == 0
     error_message = "La SA de dev no recibe roles en la carpeta prod."
   }

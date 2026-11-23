@@ -168,10 +168,10 @@ resource "google_kms_crypto_key_iam_member" "service_agents" {
 # --- VPC-SC: app y datos dentro del perímetro del entorno ---
 
 locals {
-  perimeter_projects = {
+  perimeter_projects = var.add_to_perimeter ? {
     app  = "projects/${module.app.project_number}"
     data = "projects/${module.data.project_number}"
-  }
+  } : {}
 }
 
 resource "google_access_context_manager_service_perimeter_dry_run_resource" "projects" {

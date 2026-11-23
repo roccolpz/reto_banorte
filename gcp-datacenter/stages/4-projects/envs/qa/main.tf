@@ -40,8 +40,10 @@ module "env" {
   subnets         = data.terraform_remote_state.network.outputs.subnets
   kms_keys        = data.terraform_remote_state.security.outputs.kms_keys[local.env]
   perimeter_name  = data.terraform_remote_state.security.outputs.perimeter_names[local.env]
-  vpc_sc_enforce  = var.vpc_sc_enforce
-  labels          = local.labels
+  # La SA de este entorno no edita perímetros: 2-security agrega app y datos (ADR 0007-f).
+  add_to_perimeter = false
+  vpc_sc_enforce   = var.vpc_sc_enforce
+  labels           = local.labels
 
   deployer_service_account = lookup(data.terraform_remote_state.bootstrap.outputs.stage_service_accounts, "5-workloads-${local.env}", null)
 }

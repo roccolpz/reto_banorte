@@ -79,6 +79,47 @@ run "salidas_y_perimetros" {
   }
 }
 
+run "sin_estado_de_4_projects_no_agrega_proyectos" {
+  command = plan
+
+  assert {
+    condition     = length(google_access_context_manager_service_perimeter_dry_run_resource.env_projects) == 0
+    error_message = "Antes del primer apply de 4-projects no hay proyectos que agregar."
+  }
+}
+
+run "agrega_proyectos_de_dev_y_qa_desde_4_projects" {
+  command = plan
+
+  override_data {
+    target = data.google_storage_bucket_objects.projects_state
+    values = { bucket_objects = [{ name = "4-projects/dev/default.tfstate", media_link = "", self_link = "", content_type = "", storage_class = "" }] }
+  }
+
+  override_data {
+    target = data.terraform_remote_state.projects
+    values = { outputs = { app_project_number = "111", data_project_number = "222" } }
+  }
+
+  assert {
+    condition     = toset(keys(google_access_context_manager_service_perimeter_dry_run_resource.env_projects)) == toset(["dev/app", "dev/data", "qa/app", "qa/data"])
+    error_message = "2-security agrega app y datos de dev y qa; prod los agrega 4-projects-prod (ADR 0007-f)."
+  }
+
+  assert {
+    condition = (
+      google_access_context_manager_service_perimeter_dry_run_resource.env_projects["dev/app"].resource == "projects/111" &&
+      google_access_context_manager_service_perimeter_dry_run_resource.env_projects["qa/data"].perimeter_name == module.perimeter["qa"].name
+    )
+    error_message = "Cada proyecto entra al perímetro de su entorno por número."
+  }
+
+  assert {
+    condition     = length(google_access_context_manager_service_perimeter_resource.env_projects) == 0
+    error_message = "En dry-run no se toca el status aplicado."
+  }
+}
+
 run "politica_nueva_requiere_org_id" {
   command = plan
 

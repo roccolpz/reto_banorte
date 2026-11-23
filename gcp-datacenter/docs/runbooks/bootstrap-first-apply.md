@@ -96,6 +96,8 @@ gcloud billing accounts add-iam-policy-binding <BILLING_ACCOUNT> \
 
 Opción A, por el pipeline: ejecuta el workflow `apply` con "Run workflow" (aplica todas las raíces en orden).
 Aprueba los jobs de prod cuando lleguen; las etapas comunes también corren en `prod`.
+Al terminar, vuelve a ejecutarlo (o solo 2-security) para que 2-security agregue los proyectos de dev y qa a sus
+perímetros (ADR 0007-f).
 
 Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 `terraform init -backend-config="bucket=$BUCKET"` y `terraform apply` en cada raíz:
@@ -106,6 +108,7 @@ Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 4. `3-networks/envs/dev`, `4-projects/envs/dev`, `5-workloads/envs/dev`
 5. lo mismo para `qa`
 6. lo mismo para `prod`
+7. `2-security` otra vez: agrega los proyectos de app y datos de dev y qa a sus perímetros (ADR 0007-f).
 
 Cada raíz de etapa ≥1 recibe `state_bucket` (`export TF_VAR_state_bucket=$BUCKET`).
 

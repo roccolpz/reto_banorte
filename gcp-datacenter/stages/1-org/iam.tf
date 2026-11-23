@@ -102,16 +102,19 @@ locals {
       ]
     },
     {
-      for e in local.envs : "4-projects-${e}" => [
+      for e in local.envs : "4-projects-${e}" => concat([
         { scope = "folder", key = e, role = "roles/resourcemanager.projectCreator" },
         { scope = "folder", key = e, role = "roles/resourcemanager.projectIamAdmin" },
         { scope = "folder", key = e, role = "roles/serviceusage.serviceUsageAdmin" },
         { scope = "folder", key = e, role = "roles/iam.serviceAccountAdmin" },
         # xpnAdmin incluye compute.subnetworks.setIamPolicy: cubre el adjunto a Shared VPC y el IAM de subredes del host.
         { scope = "folder", key = e, role = "roles/compute.xpnAdmin" },
-        { scope = "org", key = "org", role = "roles/accesscontextmanager.policyEditor" },
         # cloudkms.admin sobre las llaves lo concede 2-security por keyring del entorno, no aquí sobre todo el proyecto.
-      ]
+        ],
+        # La política de acceso guarda los tres perímetros y su IAM no baja a cada perímetro: solo la SA de prod,
+        # con aprobación, la edita. Los proyectos de dev y qa los agrega 2-security (ADR 0007-f).
+        e == "prod" ? [{ scope = "org", key = "org", role = "roles/accesscontextmanager.policyEditor" }] : [],
+      )
     },
     {
       for e in local.envs : "5-workloads-${e}" => [

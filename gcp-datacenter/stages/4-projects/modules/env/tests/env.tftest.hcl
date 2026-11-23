@@ -106,3 +106,16 @@ run "entorno_invalido" {
 
   expect_failures = [var.env]
 }
+
+run "perimetro_a_cargo_de_2_security" {
+  command = plan
+
+  variables {
+    add_to_perimeter = false
+  }
+
+  assert {
+    condition     = length(google_access_context_manager_service_perimeter_resource.projects) == 0 && length(google_access_context_manager_service_perimeter_dry_run_resource.projects) == 0
+    error_message = "Con add_to_perimeter = false (dev, qa) el módulo no toca el perímetro: lo hace 2-security (ADR 0007-f)."
+  }
+}

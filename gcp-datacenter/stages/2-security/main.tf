@@ -97,3 +97,49 @@ module "perimeter" {
   restricted_services = var.restricted_services
   ingress_identities  = local.ingress_identities[each.key]
 }
+
+# --- Proyectos de dev y qa en sus perímetros (ADR 0007-f) ---
+# La política de acceso no tiene IAM por perímetro: si las SAs de 4-projects-dev/qa tuvieran policyEditor
+# podrían editar el perímetro de prod. 2-security (con aprobación) agrega sus proyectos de app y datos;
+# prod los agrega 4-projects-prod. El estado de 4-projects/<env> no existe en la primera corrida: se lista
+# el prefijo antes de leerlo, y la siguiente corrida de 2-security recoge los proyectos.
+locals {
+  delegated_envs = ["dev", "qa"]
+}
+
+data "google_storage_bucket_objects" "projects_state" {
+  for_each = toset(local.delegated_envs)
+
+  bucket = var.state_bucket
+  prefix = "4-projects/${each.key}/"
+}
+
+data "terraform_remote_state" "projects" {
+  for_each = toset([for e in local.delegated_envs : e if length(data.google_storage_bucket_objects.projects_state[e].bucket_objects) > 0])
+
+  backend = "gcs"
+  config  = { bucket = var.state_bucket, prefix = "4-projects/${each.key}" }
+}
+
+locals {
+  env_perimeter_projects = merge([
+    for e, s in data.terraform_remote_state.projects : {
+      for d in ["app", "data"] : "${e}/${d}" => { env = e, resource = "projects/${s.outputs["${d}_project_number"]}" }
+      if try(s.outputs["${d}_project_number"], null) != null
+    }
+  ]...)
+}
+
+resource "google_access_context_manager_service_perimeter_dry_run_resource" "env_projects" {
+  for_each = var.vpc_sc_enforce ? {} : local.env_perimeter_projects
+
+  perimeter_name = module.perimeter[each.value.env].name
+  resource       = each.value.resource
+}
+
+resource "google_access_context_manager_service_perimeter_resource" "env_projects" {
+  for_each = var.vpc_sc_enforce ? local.env_perimeter_projects : {}
+
+  perimeter_name = module.perimeter[each.value.env].name
+  resource       = each.value.resource
+}
