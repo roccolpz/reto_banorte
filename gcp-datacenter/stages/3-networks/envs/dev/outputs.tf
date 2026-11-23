@@ -37,3 +37,8 @@ output "dns_domain" {
   description = "Dominio de la zona privada (<env>.gcp.acme.internal.)."
   value       = module.env.dns_domain
 }
+
+output "secure_tag_values" {
+  description = "Etiqueta segura -> `tagValues/<id>` (gke-nodes, vm)."
+  value       = module.env.secure_tag_values
+}

@@ -66,6 +66,16 @@ run "rejects_onprem_overlap" {
   expect_failures = [var.subnets]
 }
 
+run "rejects_onprem_supernet" {
+  command = plan
+
+  variables {
+    subnets = { us-central1 = "192.0.0.0/8" }
+  }
+
+  expect_failures = [var.subnets]
+}
+
 run "rejects_empty_dns_targets" {
   command = plan
 

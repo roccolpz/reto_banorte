@@ -1,29 +1,37 @@
 # firewall
 
-Reglas de firewall de VPC para una red de entorno. Acepta reglas propias (`rules`) y, con
-`default_rules = true`, crea el juego base que pide el diseño (Fase 3, §4.3):
+Política de firewall de red (`google_compute_network_firewall_policy`) asociada a una VPC, con sus
+reglas y, opcionalmente, las etiquetas seguras a las que apuntan (Fase 3, §4.3; reto: "reglas por
+etiqueta segura").
 
-| Regla | Prioridad | Acción | Origen |
-|---|---|---|---|
-| `deny-other-envs` | 900 | deny all, con logging | `deny_source_cidrs` (rangos de los otros entornos) |
-| `allow-iap` | 1000 | allow tcp 22, 3389 | `35.235.240.0/20` |
-| `allow-health-checks` | 1000 | allow tcp | `130.211.0.0/22`, `35.191.0.0/16` |
-| `allow-onprem` | 1000 | allow all | `onprem_cidrs` (`192.168.0.0/16`) |
-| `deny-all-ingress` | 65000 | deny all, con logging | `0.0.0.0/0` |
+- `secure_tags` crea una llave de etiqueta `<name_prefix>-fw` con propósito `GCE_FIREWALL` ligada a la
+  VPC (`purpose_data.network = <proyecto>/<red>`) y un valor por elemento (p. ej. `gke-nodes`, `vm`).
+- Cada regla de `rules` con `target_tags` aplica solo a las instancias que llevan esos valores; sin
+  `target_tags` aplica a toda la VPC (útil para los deny).
+- En una política las prioridades no se repiten; la variable lo valida.
+- La política se evalúa después de las reglas de firewall de VPC (orden por defecto de GCP). Las
+  etapas no crean reglas de VPC.
 
-Cada regla se llama `<name_prefix>-fw-<llave>`.
+El juego de reglas de cada entorno (aislamiento, on-prem, GKE, IAP, health checks) lo arma
+`stages/3-networks/modules/env`, que es donde se eligen los rangos.
+
+Quien vincula las etiquetas a VM o nodos GKE necesita `roles/resourcemanager.tagUser` sobre el valor
+(lo otorga 4-projects). Quien crea la llave necesita `roles/resourcemanager.tagAdmin` en el proyecto.
 
 ## Uso
 
 ```hcl
 module "firewall" {
-  source            = "../../modules/firewall"
-  project_id        = "acme-dev-net-host-xxxx"
-  network           = module.spoke.network_self_link
-  name_prefix       = "acme-dev-net"
-  default_rules     = true
-  deny_source_cidrs = ["10.20.0.0/16", "10.30.0.0/16", "10.31.0.0/16"]
-  labels            = local.labels
+  source      = "../../modules/firewall"
+  project_id  = "acme-dev-net-host-xxxx"
+  network     = module.spoke.network_self_link
+  name_prefix = "acme-dev-net"
+  secure_tags = ["gke-nodes", "vm"]
+  labels      = local.labels
+
+  rules = {
+    allow-internal = { priority = 1000, ranges = ["10.10.0.0/16"], target_tags = ["gke-nodes", "vm"] }
+  }
 }
 ```
 
@@ -35,20 +43,19 @@ Ejemplo completo: [examples/basic](examples/basic/main.tf).
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | project_id | Proyecto dueño de la VPC. | `string` | n/a | yes |
-| network | Self link o nombre de la VPC. | `string` | n/a | yes |
-| name_prefix | Prefijo de los nombres de regla. | `string` | n/a | yes |
-| labels | Etiquetas obligatorias (se validan; las reglas no aceptan etiquetas). | `map(string)` | n/a | yes |
-| default_rules | Crea el juego base del entorno. | `bool` | `false` | no |
-| onprem_cidrs | Rangos on-prem permitidos. | `list(string)` | `["192.168.0.0/16"]` | no |
-| deny_source_cidrs | Rangos de otros entornos a bloquear. | `list(string)` | `[]` | no |
-| rules | Reglas adicionales (`direction`, `action`, `priority`, `ranges`, `protocols`, `target_tags`, `enable_logging`). | `map(object)` | `{}` | no |
+| network | Self link de la VPC. | `string` | n/a | yes |
+| name_prefix | Prefijo de los nombres. | `string` | n/a | yes |
+| labels | Etiquetas obligatorias (se validan; la política no acepta labels). | `map(string)` | n/a | yes |
+| secure_tags | Valores de etiqueta segura a crear. | `list(string)` | `[]` | no |
+| rules | Reglas (`direction`, `action`, `priority`, `ranges`, `protocols`, `target_tags`, `enable_logging`). | `map(object)` | `{}` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
+| policy_id | ID de la política. |
 | rule_names | Llave de regla -> nombre. |
-| rule_self_links | Llave de regla -> self link. |
+| secure_tag_values | Nombre corto -> `tagValues/<id>`. |
 <!-- END_TF_DOCS -->
 
 ## Pruebas

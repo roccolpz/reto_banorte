@@ -34,11 +34,9 @@ variable "regions" {
   }
 
   validation {
-    condition = alltrue(flatten([for r in values(var.regions) : [for c in [r.app_cidr, r.services_cidr, r.proxy_cidr, r.pods_cidr] : can(cidrhost(c, 0)) && (
-      # Sin solape con on-prem 192.168.0.0/16: comparación de rangos como enteros.
-      sum([for i, o in split(".", cidrhost(c, 0)) : tonumber(o) * pow(256, 3 - i)]) + pow(2, 32 - tonumber(split("/", c)[1])) <= 3232235520 ||
-      sum([for i, o in split(".", cidrhost(c, 0)) : tonumber(o) * pow(256, 3 - i)]) >= 3232235520 + 65536
-    )]]))
+    # Dos CIDR se solapan si coinciden al prefijo más corto; try() da false si el CIDR no es válido.
+    condition = alltrue(flatten([for r in values(var.regions) : [for c in [r.app_cidr, r.services_cidr, r.proxy_cidr, r.pods_cidr] :
+    try(cidrhost("${cidrhost(c, 0)}/${min(16, split("/", c)[1])}", 0) != cidrhost("192.168.0.0/${min(16, split("/", c)[1])}", 0), false)]]))
     error_message = "Cada rango debe ser un CIDR válido que no se solape con 192.168.0.0/16."
   }
 }
@@ -49,10 +47,7 @@ variable "psa_cidr" {
   default     = null
 
   validation {
-    condition = var.psa_cidr == null ? true : can(cidrhost(var.psa_cidr, 0)) && (
-      sum([for i, o in split(".", cidrhost(var.psa_cidr, 0)) : tonumber(o) * pow(256, 3 - i)]) + pow(2, 32 - tonumber(split("/", var.psa_cidr)[1])) <= 3232235520 ||
-      sum([for i, o in split(".", cidrhost(var.psa_cidr, 0)) : tonumber(o) * pow(256, 3 - i)]) >= 3232235520 + 65536
-    )
+    condition     = var.psa_cidr == null ? true : try(cidrhost("${cidrhost(var.psa_cidr, 0)}/${min(16, split("/", var.psa_cidr)[1])}", 0) != cidrhost("192.168.0.0/${min(16, split("/", var.psa_cidr)[1])}", 0), false)
     error_message = "psa_cidr debe ser un CIDR válido que no se solape con 192.168.0.0/16."
   }
 }
