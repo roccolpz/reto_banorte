@@ -32,7 +32,7 @@ variable "labels" {
 variable "vpn_regions" {
   description = "Regiones con HA VPN hacia onprem-sim. Cada región agrega 2 gateways, 4 túneles y un spoke híbrido."
   type        = list(string)
-  default     = ["us-central1"]
+  default     = ["us-central1", "us-east4"]
 
   validation {
     condition     = length(var.vpn_regions) > 0 && length(distinct(var.vpn_regions)) == length(var.vpn_regions) && alltrue([for r in var.vpn_regions : contains(["us-central1", "us-east4"], r)])

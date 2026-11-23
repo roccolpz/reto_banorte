@@ -1,99 +1,66 @@
-locals {
-  # Juego base de un entorno. Prioridades: deny entre entornos (900) antes que los allow (1000);
-  # deny-all (65000) queda justo encima de las reglas implícitas de GCP para dejar rastro en logs.
-  base_rules = {
-    deny-all-ingress = {
-      description    = "Niega todo el ingreso no permitido explícitamente (con logging)."
-      direction      = "INGRESS"
-      action         = "deny"
-      priority       = 65000
-      ranges         = ["0.0.0.0/0"]
-      protocols      = [{ protocol = "all", ports = [] }]
-      target_tags    = null
-      enable_logging = true
-    }
-    allow-iap = {
-      description    = "SSH/RDP solo desde IAP TCP forwarding."
-      direction      = "INGRESS"
-      action         = "allow"
-      priority       = 1000
-      ranges         = ["35.235.240.0/20"]
-      protocols      = [{ protocol = "tcp", ports = ["22", "3389"] }]
-      target_tags    = null
-      enable_logging = false
-    }
-    allow-health-checks = {
-      description    = "Health checks de balanceadores de GCP."
-      direction      = "INGRESS"
-      action         = "allow"
-      priority       = 1000
-      ranges         = ["130.211.0.0/22", "35.191.0.0/16"]
-      protocols      = [{ protocol = "tcp", ports = [] }]
-      target_tags    = null
-      enable_logging = false
-    }
-    allow-onprem = {
-      description    = "Tráfico desde on-prem por HA VPN."
-      direction      = "INGRESS"
-      action         = "allow"
-      priority       = 1000
-      ranges         = var.onprem_cidrs
-      protocols      = [{ protocol = "all", ports = [] }]
-      target_tags    = null
-      enable_logging = false
-    }
-  }
+# Política de firewall de red asociada a la VPC. Las reglas con target_tags apuntan a etiquetas
+# seguras (Resource Manager, propósito GCE_FIREWALL); sin target_tags aplican a toda la VPC.
 
-  deny_envs_rule = length(var.deny_source_cidrs) == 0 ? {} : {
-    deny-other-envs = {
-      description    = "Aislamiento lateral: niega tráfico desde otros entornos."
-      direction      = "INGRESS"
-      action         = "deny"
-      priority       = 900
-      ranges         = var.deny_source_cidrs
-      protocols      = [{ protocol = "all", ports = [] }]
-      target_tags    = null
-      enable_logging = true
-    }
-  }
+resource "google_tags_tag_key" "this" {
+  count = length(var.secure_tags) > 0 ? 1 : 0
 
-  rules = merge(var.default_rules ? merge(local.base_rules, local.deny_envs_rule) : {}, var.rules)
+  parent       = "projects/${var.project_id}"
+  short_name   = "${var.name_prefix}-fw"
+  description  = "Etiquetas seguras de firewall de ${basename(var.network)}."
+  purpose      = "GCE_FIREWALL"
+  purpose_data = { network = "${var.project_id}/${basename(var.network)}" }
 }
 
-resource "google_compute_firewall" "this" {
-  for_each = local.rules
+resource "google_tags_tag_value" "this" {
+  for_each = toset(var.secure_tags)
 
+  parent      = google_tags_tag_key.this[0].id
+  short_name  = each.key
+  description = "Destino de reglas de firewall: ${each.key}."
+}
+
+resource "google_compute_network_firewall_policy" "this" {
   project     = var.project_id
-  network     = var.network
-  name        = "${var.name_prefix}-fw-${each.key}"
-  description = each.value.description
-  direction   = each.value.direction
-  priority    = each.value.priority
+  name        = "${var.name_prefix}-fwp"
+  description = "Política de firewall de ${basename(var.network)}."
+}
 
-  source_ranges      = each.value.direction == "INGRESS" ? each.value.ranges : null
-  destination_ranges = each.value.direction == "EGRESS" ? each.value.ranges : null
-  target_tags        = each.value.target_tags
+resource "google_compute_network_firewall_policy_association" "this" {
+  project           = var.project_id
+  name              = "${var.name_prefix}-fwp-assoc"
+  firewall_policy   = google_compute_network_firewall_policy.this.name
+  attachment_target = var.network
+}
 
-  dynamic "allow" {
-    for_each = each.value.action == "allow" ? each.value.protocols : []
-    content {
-      protocol = allow.value.protocol
-      ports    = allow.value.ports
+resource "google_compute_network_firewall_policy_rule" "this" {
+  for_each = var.rules
+
+  project         = var.project_id
+  firewall_policy = google_compute_network_firewall_policy.this.name
+  rule_name       = "${var.name_prefix}-fw-${each.key}"
+  description     = each.value.description
+  direction       = each.value.direction
+  action          = each.value.action
+  priority        = each.value.priority
+  enable_logging  = each.value.enable_logging
+
+  match {
+    src_ip_ranges  = each.value.direction == "INGRESS" ? each.value.ranges : null
+    dest_ip_ranges = each.value.direction == "EGRESS" ? each.value.ranges : null
+
+    dynamic "layer4_configs" {
+      for_each = each.value.protocols
+      content {
+        ip_protocol = layer4_configs.value.protocol
+        ports       = layer4_configs.value.ports
+      }
     }
   }
 
-  dynamic "deny" {
-    for_each = each.value.action == "deny" ? each.value.protocols : []
+  dynamic "target_secure_tags" {
+    for_each = each.value.target_tags
     content {
-      protocol = deny.value.protocol
-      ports    = deny.value.ports
-    }
-  }
-
-  dynamic "log_config" {
-    for_each = each.value.enable_logging ? [1] : []
-    content {
-      metadata = "INCLUDE_ALL_METADATA"
+      name = google_tags_tag_value.this[target_secure_tags.value].id
     }
   }
 }
