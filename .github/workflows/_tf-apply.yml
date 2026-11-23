@@ -43,6 +43,8 @@ jobs:
       TF_VAR_billing_account: ${{ vars.TF_VAR_BILLING_ACCOUNT }}
       TF_VAR_suffix: ${{ vars.TF_VAR_SUFFIX }}
       TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
+      TF_VAR_labels: ${{ vars.TF_LABELS_JSON }}
+      TF_VAR_notification_email: ${{ vars.NOTIFICATION_EMAIL }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

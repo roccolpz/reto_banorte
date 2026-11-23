@@ -49,6 +49,8 @@ credencial). Los valores salen de `0-bootstrap` ([bootstrap-first-apply](runbook
 | `TF_VAR_ORG_ID` | ID de la organización → `TF_VAR_org_id` |
 | `TF_VAR_BILLING_ACCOUNT` | Cuenta de facturación → `TF_VAR_billing_account` |
 | `TF_VAR_SUFFIX` | Sufijo de 4 caracteres hex → `TF_VAR_suffix` |
+| `TF_LABELS_JSON` | Etiquetas base en JSON, p. ej. `{"app":"landing-zone","owner":"platform","cost_center":"infra"}` → `TF_VAR_labels`. Obligatoria para 1-org (sin default); vacía, las demás raíces usan su default |
+| `NOTIFICATION_EMAIL` | Correo del canal de alertas → `TF_VAR_notification_email` (obligatoria en 5-workloads) |
 
 GitHub guarda los nombres de variable en mayúsculas; los workflows los pasan a Terraform con el nombre en minúsculas.
 No se usan llaves JSON ni tokens personales (ADR 0004-e).

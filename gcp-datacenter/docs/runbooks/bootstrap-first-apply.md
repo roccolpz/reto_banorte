@@ -69,6 +69,8 @@ Con las salidas de 0-bootstrap, en Settings > Secrets and variables > Actions > 
 | `TF_SA_PLAN` | `terraform output -json stage_service_accounts \| jq -r .plan` |
 | `TF_SA_<LLAVE>` | una por llave de `stage_service_accounts` (ver la tabla en `docs/README.md`) |
 | `TF_VAR_ORG_ID`, `TF_VAR_BILLING_ACCOUNT`, `TF_VAR_SUFFIX` | los mismos valores del `terraform.tfvars` |
+| `TF_LABELS_JSON` | `labels` del `terraform.tfvars` en JSON, p. ej. `{"app":"landing-zone","owner":"platform","cost_center":"infra"}` |
+| `NOTIFICATION_EMAIL` | correo que recibe las alertas de 5-workloads |
 
 Este comando imprime las variables `TF_SA_*` listas para copiar:
 
