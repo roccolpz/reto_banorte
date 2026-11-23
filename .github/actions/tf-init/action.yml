@@ -1,0 +1,44 @@
+name: tf-init
+description: >-
+  Instala Terraform, se autentica en GCP por Workload Identity Federation (sin llaves JSON)
+  y ejecuta terraform init en una raíz. Sin state_bucket, init usa -backend=false.
+inputs:
+  root:
+    description: Ruta de la raíz de Terraform, relativa al repositorio.
+    required: true
+  terraform_version:
+    description: Versión de Terraform.
+    default: "1.17.2"
+  workload_identity_provider:
+    description: Nombre completo del proveedor WIF (vars.WIF_PROVIDER). Vacío = sin autenticación.
+    default: ""
+  service_account:
+    description: Email de la cuenta de servicio a impersonar. Vacío = sin autenticación.
+    default: ""
+  state_bucket:
+    description: Bucket del estado remoto (vars.TF_STATE_BUCKET). Vacío = init -backend=false.
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+        terraform_wrapper: false
+
+    - if: inputs.service_account != ''
+      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+      with:
+        workload_identity_provider: ${{ inputs.workload_identity_provider }}
+        service_account: ${{ inputs.service_account }}
+
+    - shell: bash
+      env:
+        ROOT: ${{ inputs.root }}
+        BUCKET: ${{ inputs.state_bucket }}
+      run: |
+        if [ -n "$BUCKET" ]; then
+          terraform -chdir="$ROOT" init -input=false -backend-config="bucket=$BUCKET"
+        else
+          terraform -chdir="$ROOT" init -input=false -backend=false
+        fi

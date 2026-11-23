@@ -1,0 +1,80 @@
+# Workflow reutilizable: plan + apply de una raíz con la SA de su etapa, dentro de un environment de GitHub.
+# La SA se toma de la variable TF_SA_<ETAPA>[_<ENV>] (p. ej. 3-networks/envs/prod -> TF_SA_3_NETWORKS_PROD),
+# que corresponde a la llave de la salida stage_service_accounts de 0-bootstrap.
+name: _tf-apply
+
+on:
+  workflow_call:
+    inputs:
+      root:
+        description: Raíz a aplicar, p. ej. gcp-datacenter/stages/1-org
+        type: string
+        required: true
+      environment:
+        description: Environment de GitHub (common, dev, qa, prod). prod exige aprobación.
+        type: string
+        required: true
+      roots:
+        description: Arreglo JSON de raíces afectadas; si la raíz no está, el job se omite.
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  apply:
+    if: contains(fromJSON(inputs.roots), inputs.root)
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: tf-${{ inputs.root }}
+      cancel-in-progress: false
+    env:
+      ROOT: ${{ inputs.root }}
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_org_id: ${{ vars.TF_VAR_ORG_ID }}
+      TF_VAR_billing_account: ${{ vars.TF_VAR_BILLING_ACCOUNT }}
+      TF_VAR_suffix: ${{ vars.TF_VAR_SUFFIX }}
+      TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: meta
+        run: |
+          key=${ROOT#gcp-datacenter/stages/}
+          key=${key//\/envs\//-}
+          key=${key//\//-}
+          var="TF_SA_$(tr 'a-z-' 'A-Z_' <<<"$key")"
+          echo "Raíz $ROOT -> variable $var"
+          echo "sa_var=$var" >>"$GITHUB_OUTPUT"
+
+      - name: Verificar variables
+        env:
+          SA: ${{ vars[steps.meta.outputs.sa_var] }}
+          SA_VAR: ${{ steps.meta.outputs.sa_var }}
+          WIF: ${{ vars.WIF_PROVIDER }}
+          BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          [ -n "$SA" ] || { echo "::error::falta la variable $SA_VAR"; exit 1; }
+          [ -n "$WIF" ] || { echo "::error::falta la variable WIF_PROVIDER"; exit 1; }
+          [ -n "$BUCKET" ] || { echo "::error::falta la variable TF_STATE_BUCKET"; exit 1; }
+
+      - uses: ./.github/actions/tf-init
+        with:
+          root: ${{ inputs.root }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars[steps.meta.outputs.sa_var] }}
+          state_bucket: ${{ vars.TF_STATE_BUCKET }}
+
+      - run: terraform -chdir="$ROOT" plan -input=false -no-color -out=tfplan
+
+      - run: terraform -chdir="$ROOT" apply -input=false -no-color tfplan

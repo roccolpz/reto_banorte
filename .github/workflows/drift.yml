@@ -1,0 +1,131 @@
+# Detección diaria de drift: plan -detailed-exitcode por raíz con la SA de plan (solo lectura).
+# Código 2 = hay diferencias: se abre (o actualiza) un issue "Drift: <raíz>" con la etiqueta drift.
+# Sin diferencias se cierra el issue abierto, si existe. Respuesta: docs/runbooks/drift-response.md.
+name: drift
+
+on:
+  schedule:
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  detect:
+    runs-on: ubuntu-24.04
+    outputs:
+      roots: ${{ steps.discover.outputs.roots }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: discover
+        run: |
+          roots=$(bash gcp-datacenter/scripts/discover-roots.sh roots --json)
+          echo "roots=$roots" >>"$GITHUB_OUTPUT"
+
+  drift:
+    needs: detect
+    if: needs.detect.outputs.roots != '[]'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+    concurrency:
+      group: drift-${{ matrix.root }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        root: ${{ fromJSON(needs.detect.outputs.roots) }}
+    env:
+      ROOT: ${{ matrix.root }}
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_org_id: ${{ vars.TF_VAR_ORG_ID }}
+      TF_VAR_billing_account: ${{ vars.TF_VAR_BILLING_ACCOUNT }}
+      TF_VAR_suffix: ${{ vars.TF_VAR_SUFFIX }}
+      TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: backend
+        run: |
+          if [ -f "$ROOT/backend.tf" ]; then echo "present=true" >>"$GITHUB_OUTPUT"; else
+            echo "present=false" >>"$GITHUB_OUTPUT"
+            echo "::notice::$ROOT no tiene backend.tf; se omite"
+          fi
+
+      - if: steps.backend.outputs.present == 'true'
+        uses: ./.github/actions/tf-init
+        with:
+          root: ${{ matrix.root }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.TF_SA_PLAN }}
+          state_bucket: ${{ vars.TF_STATE_BUCKET }}
+
+      # 0 = sin cambios, 2 = drift, otro = error (el job falla).
+      - id: plan
+        if: steps.backend.outputs.present == 'true'
+        run: |
+          set +e
+          terraform -chdir="$ROOT" plan -input=false -lock=false -no-color -detailed-exitcode >plan.txt 2>&1
+          rc=$?
+          set -e
+          cat plan.txt
+          case $rc in
+            0) echo "drift=false" >>"$GITHUB_OUTPUT" ;;
+            2) echo "drift=true" >>"$GITHUB_OUTPUT"; echo "::warning::drift en $ROOT" ;;
+            *) echo "::error::terraform plan falló en $ROOT (código $rc)"; exit "$rc" ;;
+          esac
+
+      - name: Abrir, actualizar o cerrar el issue de drift
+        if: steps.plan.outcome == 'success'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DRIFT: ${{ steps.plan.outputs.drift }}
+        with:
+          script: |
+            const fs = require('fs');
+            const root = process.env.ROOT;
+            const drift = process.env.DRIFT === 'true';
+            const { owner, repo } = context.repo;
+            const title = `Drift: ${root}`;
+            const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const issues = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'open', labels: 'drift' });
+            const open = issues.find((i) => i.title === title && !i.pull_request);
+            if (!drift) {
+              if (open) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: open.number, body: `Sin drift en la ejecución [${context.runId}](${run}); se cierra.` });
+                await github.rest.issues.update({ owner, repo, issue_number: open.number, state: 'closed' });
+              }
+              return;
+            }
+            const plan = fs.readFileSync('plan.txt', 'utf8');
+            const summary = (plan.match(/^Plan: .*$/m) || ['(sin resumen)'])[0];
+            const cut = plan.length > 60000 ? plan.slice(-60000) : plan;
+            const body = [
+              `Drift detectado en \`${root}\`: ${summary}`,
+              `- [Ejecución](${run})`,
+              '- Procedimiento: `gcp-datacenter/docs/runbooks/drift-response.md`',
+              '',
+              '<details><summary>Plan</summary>',
+              '',
+              '```text',
+              cut,
+              '```',
+              '</details>',
+            ].join('\n');
+            if (open) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: open.number, body });
+            } else {
+              await github.rest.issues.create({ owner, repo, title, body, labels: ['drift'] });
+            }
