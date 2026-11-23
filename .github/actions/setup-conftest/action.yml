@@ -1,0 +1,17 @@
+name: setup-conftest
+description: Instala conftest (versión fijada, verificada con SHA-256) en el PATH.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        VERSION: "0.71.1"
+        SHA256: c3f6b2a753bd56e377a1e51a95ae3e057f926f2e9139f7d5b5dfbbaf810f7985
+      run: |
+        bin="$RUNNER_TEMP/conftest-bin"
+        mkdir -p "$bin"
+        tgz="$RUNNER_TEMP/conftest.tar.gz"
+        curl -fsSL -o "$tgz" "https://github.com/open-policy-agent/conftest/releases/download/v${VERSION}/conftest_${VERSION}_Linux_x86_64.tar.gz"
+        echo "${SHA256}  ${tgz}" | sha256sum -c -
+        tar -xzf "$tgz" -C "$bin" conftest
+        echo "$bin" >>"$GITHUB_PATH"
