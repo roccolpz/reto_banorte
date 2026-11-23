@@ -4,6 +4,7 @@
 # aprobación del environment "prod" (dos revisores obligatorios, configurado en Settings > Environments > prod):
 # sus SA solo se impersonan desde ese environment.
 # Solo se aplican las raíces afectadas por el push; workflow_dispatch aplica todas.
+# Entre dev y qa corre tests-dev (pruebas de humo de dev): si fallan, qa y prod no se aplican.
 name: apply
 
 on:
@@ -93,9 +94,22 @@ jobs:
     permissions: { contents: read, id-token: write }
     with: { root: gcp-datacenter/stages/5-workloads/envs/dev, environment: dev, roots: "${{ needs.detect.outputs.roots }}" }
 
-  # ---- qa (después de dev) ----
-  net-qa:
+  # Puerta de dev: qa y prod se aplican solo si dev quedó sano (plan sin cambios, GKE, Cloud SQL y MIG).
+  # Corre en cada apply con raíces afectadas, aunque dev no haya cambiado.
+  tests-dev:
     needs: [detect, workloads-dev]
+    if: ${{ !cancelled() && !failure() && needs.detect.outputs.roots != '[]' }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with:
+      root: gcp-datacenter/stages/5-workloads/envs/dev
+      environment: dev
+      roots: "${{ needs.detect.outputs.roots }}"
+      mode: smoke
+
+  # ---- qa (después de las pruebas de dev) ----
+  net-qa:
+    needs: [detect, tests-dev]
     if: ${{ !cancelled() && !failure() }}
     uses: ./.github/workflows/_tf-apply.yml
     permissions: { contents: read, id-token: write }

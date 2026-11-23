@@ -1,6 +1,7 @@
 # Workflow reutilizable: plan + apply de una raíz con la SA de su etapa, dentro de un environment de GitHub.
 # La SA se toma de la variable TF_SA_<ETAPA>[_<ENV>] (p. ej. 3-networks/envs/prod -> TF_SA_3_NETWORKS_PROD),
 # que corresponde a la llave de la salida stage_service_accounts de 0-bootstrap.
+# mode: smoke no aplica: corre gcp-datacenter/test/smoke/smoke.sh contra la raíz (puerta de dev antes de qa).
 name: _tf-apply
 
 on:
@@ -18,6 +19,10 @@ on:
         description: Arreglo JSON de raíces afectadas; si la raíz no está, el job se omite.
         type: string
         required: true
+      mode:
+        description: "apply (plan + apply si la raíz está en roots) o smoke (pruebas de humo de la raíz, siempre)."
+        type: string
+        default: apply
 
 permissions:
   contents: read
@@ -29,7 +34,7 @@ defaults:
 
 jobs:
   apply:
-    if: contains(fromJSON(inputs.roots), inputs.root)
+    if: inputs.mode == 'smoke' || contains(fromJSON(inputs.roots), inputs.root)
     runs-on: ubuntu-24.04
     environment: ${{ inputs.environment }}
     concurrency:
@@ -45,6 +50,9 @@ jobs:
       TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
       TF_VAR_labels: ${{ vars.TF_LABELS_JSON }}
       TF_VAR_notification_email: ${{ vars.NOTIFICATION_EMAIL }}
+      # Solo 1-org la declara: bloquea la retención del bucket de auditoría (irreversible, contrato §8).
+      # Una organización de pruebas que deba destruirse define la variable AUDIT_RETENTION_LOCKED=false.
+      TF_VAR_audit_retention_locked: ${{ vars.AUDIT_RETENTION_LOCKED || 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -77,6 +85,12 @@ jobs:
           service_account: ${{ vars[steps.meta.outputs.sa_var] }}
           state_bucket: ${{ vars.TF_STATE_BUCKET }}
 
-      - run: terraform -chdir="$ROOT" plan -input=false -no-color -out=tfplan
+      - if: inputs.mode == 'apply'
+        run: terraform -chdir="$ROOT" plan -input=false -no-color -out=tfplan
 
-      - run: terraform -chdir="$ROOT" apply -input=false -no-color tfplan
+      - if: inputs.mode == 'apply'
+        run: terraform -chdir="$ROOT" apply -input=false -no-color tfplan
+
+      - if: inputs.mode == 'smoke'
+        name: Pruebas de humo
+        run: bash gcp-datacenter/test/smoke/smoke.sh "$ROOT"
