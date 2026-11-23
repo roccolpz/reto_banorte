@@ -50,9 +50,30 @@ module "firewall" {
   project_id  = var.project_id
   network     = module.network.network_self_link
   name_prefix = "tt-fw-${var.suffix}"
+  secure_tags = ["gke-nodes", "vm"]
   labels      = local.labels
+
+  # Mismo patrón que 3-networks/envs: on-prem solo a 80/443 de las cargas etiquetadas, el resto se niega.
+  rules = {
+    allow-onprem-web = {
+      priority       = 1000
+      ranges         = ["192.168.0.0/16"]
+      protocols      = [{ protocol = "tcp", ports = ["80", "443"] }]
+      target_tags    = ["gke-nodes", "vm"]
+      enable_logging = true
+    }
+    deny-all-ingress = {
+      action   = "deny"
+      priority = 65000
+      ranges   = ["0.0.0.0/0"]
+    }
+  }
 }
 
 output "rule_names" {
   value = module.firewall.rule_names
+}
+
+output "secure_tag_values" {
+  value = module.firewall.secure_tag_values
 }

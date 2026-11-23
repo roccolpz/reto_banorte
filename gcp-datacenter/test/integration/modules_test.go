@@ -38,7 +38,11 @@ func TestFirewall(t *testing.T) {
 	opts := options(t, "firewall", nil)
 	applyIdempotent(t, opts)
 
-	assert.NotEmpty(t, terraform.OutputList(t, opts, "rule_names"))
+	assert.Len(t, terraform.OutputMap(t, opts, "rule_names"), 2)
+	tags := terraform.OutputMap(t, opts, "secure_tag_values")
+	for _, k := range []string{"gke-nodes", "vm"} {
+		assert.Contains(t, tags[k], "tagValues/", k)
+	}
 }
 
 func TestGKE(t *testing.T) {
