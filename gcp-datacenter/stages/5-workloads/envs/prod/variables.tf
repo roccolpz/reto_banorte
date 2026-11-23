@@ -37,21 +37,21 @@ variable "deletion_protection" {
 }
 
 variable "sql_ha" {
-  description = "Cloud SQL en alta disponibilidad. false por default; el ejemplo de prod lo activa."
+  description = "Cloud SQL en alta disponibilidad. null: true solo en prod."
   type        = bool
-  default     = false
+  default     = null
 }
 
 variable "enable_dr_replica" {
-  description = "Réplica de Cloud SQL en us-east4 (solo prod tiene la llave sql-dr)."
+  description = "Réplica de Cloud SQL en us-east4 (solo prod tiene la llave sql-dr). null: true solo en prod."
   type        = bool
-  default     = false
+  default     = null
 }
 
 variable "bucket_dual_region" {
-  description = "Bucket dual-region con turbo replication. Requiere la llave storage-us (ADR 0002-d)."
+  description = "Bucket dual-region con turbo replication. Requiere la llave storage-us (ADR 0002-d). null: true solo en prod."
   type        = bool
-  default     = false
+  default     = null
 }
 
 variable "notification_email" {

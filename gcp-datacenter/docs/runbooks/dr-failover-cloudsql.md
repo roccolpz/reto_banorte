@@ -4,7 +4,7 @@ Cuándo: us-central1 no está disponible y la base de prod no responde, o un sim
 Quién: plataforma, con aprobación del responsable del servicio. La promoción es irreversible: la réplica deja de ser
 réplica y la primaria anterior queda separada.
 
-Requisito: `enable_dr_replica = true` en `5-workloads/envs/prod` (el default es `false`; ver contrato §8). Sin réplica
+Requisito: `enable_dr_replica` en `true` en `5-workloads/envs/prod` (es el default en prod; ver contrato §8). Sin réplica
 DR este runbook no aplica: restaura desde el último backup en otra región.
 
 ## 0. Decidir

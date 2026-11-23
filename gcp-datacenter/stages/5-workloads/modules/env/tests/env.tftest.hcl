@@ -89,6 +89,41 @@ run "prod_regional_ha_dr" {
   }
 }
 
+run "dev_por_defecto_sin_ha_dr_ni_dual_region" {
+  command = plan
+
+  assert {
+    condition     = local.sql_ha == false && local.enable_dr_replica == false && local.bucket_dual_region == false
+    error_message = "Sin valores explícitos, dev queda sin HA, sin réplica DR y con bucket regional."
+  }
+}
+
+run "prod_por_defecto_con_ha_dr_y_dual_region" {
+  command = plan
+
+  # Sin sql_ha, enable_dr_replica ni bucket_dual_region: así aplica el pipeline, que no pasa tfvars.
+  variables {
+    env = "prod"
+    kms_keys = {
+      storage      = "projects/s/locations/us-central1/keyRings/kr/cryptoKeys/storage"
+      "storage-us" = "projects/s/locations/us/keyRings/kr-us/cryptoKeys/storage-us"
+      sql          = "projects/s/locations/us-central1/keyRings/kr/cryptoKeys/sql"
+      gke          = "projects/s/locations/us-central1/keyRings/kr/cryptoKeys/gke"
+      "sql-dr"     = "projects/s/locations/us-east4/keyRings/kr-dr/cryptoKeys/sql-dr"
+    }
+  }
+
+  assert {
+    condition     = local.sql_ha && local.enable_dr_replica && local.bucket_dual_region
+    error_message = "prod sin valores explícitos usa HA, réplica DR y bucket dual-region."
+  }
+
+  assert {
+    condition     = module.sql.replica_name != null
+    error_message = "prod crea la réplica DR por default."
+  }
+}
+
 run "dual_region_sin_llave_us" {
   command = plan
 

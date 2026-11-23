@@ -78,29 +78,29 @@ variable "master_authorized_networks" {
 }
 
 variable "sql_ha" {
-  description = "Cloud SQL en alta disponibilidad regional."
+  description = "Cloud SQL en alta disponibilidad regional. null: true solo en prod."
   type        = bool
-  default     = false
+  default     = null
 }
 
 variable "enable_dr_replica" {
-  description = "Réplica de Cloud SQL en us-east4 con la llave sql-dr."
+  description = "Réplica de Cloud SQL en us-east4 con la llave sql-dr. null: true solo en prod."
   type        = bool
-  default     = false
+  default     = null
 
   validation {
-    condition     = !var.enable_dr_replica || contains(keys(var.kms_keys), "sql-dr")
+    condition     = !coalesce(var.enable_dr_replica, var.env == "prod") || contains(keys(var.kms_keys), "sql-dr")
     error_message = "enable_dr_replica requiere la llave sql-dr en kms_keys (solo prod la tiene)."
   }
 }
 
 variable "bucket_dual_region" {
-  description = "Bucket dual-region US-CENTRAL1 + US-EAST4 con turbo replication. Requiere la llave storage-us (ADR 0002-d)."
+  description = "Bucket dual-region US-CENTRAL1 + US-EAST4 con turbo replication. Requiere la llave storage-us (ADR 0002-d). null: true solo en prod."
   type        = bool
-  default     = false
+  default     = null
 
   validation {
-    condition     = !var.bucket_dual_region || contains(keys(var.kms_keys), "storage-us")
+    condition     = !coalesce(var.bucket_dual_region, var.env == "prod") || contains(keys(var.kms_keys), "storage-us")
     error_message = "bucket_dual_region requiere la llave storage-us en ubicación us (ADR 0002-d)."
   }
 }
