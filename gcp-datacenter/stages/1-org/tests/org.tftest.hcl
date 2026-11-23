@@ -123,6 +123,24 @@ run "org_policies_y_firewall_jerarquico" {
   }
 
   assert {
+    condition     = contains(keys(google_project_iam_member.this), "3-networks-hub|project|net_hub|roles/networkconnectivity.hubAdmin")
+    error_message = "La SA de 3-networks-hub crea el hub de NCC y su grupo edge."
+  }
+
+  assert {
+    condition = alltrue([for k in [
+      "3-networks-prod|project|net-host-prod|roles/networkconnectivity.spokeAdmin",
+      "3-networks-prod|project|net_hub|roles/networkconnectivity.groupUser",
+    ] : contains(keys(google_project_iam_member.this), k)])
+    error_message = "La SA de 3-networks-<env> crea su spoke en net-host y lo une al grupo edge del hub."
+  }
+
+  assert {
+    condition     = contains(keys(google_project_iam_member.this), "5-workloads-dev|project|net_hub|roles/monitoring.viewer")
+    error_message = "La SA de 5-workloads-<env> agrega net_hub a su metrics scope."
+  }
+
+  assert {
     condition     = length([for k in keys(google_folder_iam_member.this) : k if startswith(k, "5-workloads-dev|folder|prod|")]) == 0
     error_message = "La SA de dev no recibe roles en la carpeta prod."
   }
