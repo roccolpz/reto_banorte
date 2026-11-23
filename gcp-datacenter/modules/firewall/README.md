@@ -27,7 +27,6 @@ module "firewall" {
   network     = module.spoke.network_self_link
   name_prefix = "acme-dev-net"
   secure_tags = ["gke-nodes", "vm"]
-  labels      = local.labels
 
   rules = {
     allow-internal = { priority = 1000, ranges = ["10.10.0.0/16"], target_tags = ["gke-nodes", "vm"] }
@@ -45,7 +44,6 @@ Ejemplo completo: [examples/basic](examples/basic/main.tf).
 | project_id | Proyecto dueño de la VPC. | `string` | n/a | yes |
 | network | Self link de la VPC. | `string` | n/a | yes |
 | name_prefix | Prefijo de los nombres. | `string` | n/a | yes |
-| labels | Etiquetas obligatorias (se validan; la política no acepta labels). | `map(string)` | n/a | yes |
 | secure_tags | Valores de etiqueta segura a crear. | `list(string)` | `[]` | no |
 | rules | Reglas (`direction`, `action`, `priority`, `ranges`, `protocols`, `target_tags`, `enable_logging`). | `map(object)` | `{}` | no |
 

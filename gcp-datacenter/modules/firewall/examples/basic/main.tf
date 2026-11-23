@@ -30,12 +30,4 @@ module "firewall" {
       enable_logging = true
     }
   }
-
-  labels = {
-    env         = "dev"
-    app         = "network"
-    owner       = "network-team"
-    cost_center = "infra"
-    managed_by  = "terraform"
-  }
 }

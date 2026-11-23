@@ -4,13 +4,6 @@ variables {
   project_id  = "acme-dev-net-host-0000"
   network     = "https://www.googleapis.com/compute/v1/projects/acme-dev-net-host-0000/global/networks/acme-dev-net-vpc"
   name_prefix = "acme-dev-net"
-  labels = {
-    env         = "dev"
-    app         = "network"
-    owner       = "network-team"
-    cost_center = "infra"
-    managed_by  = "terraform"
-  }
 }
 
 run "politica_con_etiquetas_seguras" {
@@ -124,14 +117,4 @@ run "rechaza_accion_invalida" {
   }
 
   expect_failures = [var.rules]
-}
-
-run "rechaza_etiquetas_incompletas" {
-  command = plan
-
-  variables {
-    labels = { env = "dev" }
-  }
-
-  expect_failures = [var.labels]
 }

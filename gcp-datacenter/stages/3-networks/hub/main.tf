@@ -57,7 +57,6 @@ module "onprem_firewall" {
   project_id  = local.hub_project_id
   network     = google_compute_network.onprem.self_link
   name_prefix = local.onprem_name
-  labels      = local.labels
 
   rules = {
     allow-gcp = {

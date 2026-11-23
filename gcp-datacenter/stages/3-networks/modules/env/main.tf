@@ -119,5 +119,4 @@ module "firewall" {
   name_prefix = "${var.prefix}-${var.env}-net"
   secure_tags = local.workloads
   rules       = local.firewall_rules
-  labels      = var.labels
 }

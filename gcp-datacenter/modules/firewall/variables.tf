@@ -13,16 +13,6 @@ variable "name_prefix" {
   type        = string
 }
 
-variable "labels" {
-  description = "Etiquetas obligatorias del contrato. Las políticas de firewall y las etiquetas seguras no aceptan labels; se validan para mantener la interfaz común de módulos."
-  type        = map(string)
-
-  validation {
-    condition     = alltrue([for k in ["env", "app", "owner", "cost_center", "managed_by"] : contains(keys(var.labels), k)])
-    error_message = "labels debe incluir env, app, owner, cost_center y managed_by."
-  }
-}
-
 variable "secure_tags" {
   description = "Valores de etiqueta segura (propósito GCE_FIREWALL) que se crean bajo la llave `<name_prefix>-fw`, p. ej. `gke-nodes`, `vm`. Las reglas los usan en `target_tags`. Lista vacía = sin llave."
   type        = list(string)
