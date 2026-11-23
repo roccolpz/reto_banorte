@@ -94,12 +94,26 @@ gcloud billing accounts add-iam-policy-binding <BILLING_ACCOUNT> \
   --member="group:gcp-billing-admins@<dominio>" --role="roles/billing.admin"
 ```
 
-## 5. Resto de etapas
+## 5. Activar Security Command Center (a mano, antes de 1-org)
+
+Terraform no puede activar SCC en la organización (ADR 0010-g). Si no está activo, el apply de 1-org falla al crear
+la notificación de hallazgos. Un administrador de la organización lo activa una vez en la consola: Security >
+Security Command Center > Get started, a nivel organización, nivel Standard (Premium es una contratación aparte).
+Comprueba que la página de SCC de la organización muestre hallazgos o el resumen de activos antes de seguir.
+
+## 6. Resto de etapas
 
 Opción A, por el pipeline: ejecuta el workflow `apply` con "Run workflow" (aplica todas las raíces en orden).
 Aprueba los jobs de prod cuando lleguen; las etapas comunes también corren en `prod`.
-Al terminar, vuelve a ejecutarlo (o solo 2-security) para que 2-security agregue los proyectos de dev y qa a sus
-perímetros (ADR 0007-f).
+Al terminar, vuelve a ejecutarlo (o solo 2-security). La primera corrida de 2-security no encuentra el estado de
+`4-projects/<env>` y omite lo que depende de él. La segunda crea:
+
+- los proyectos de app y datos de dev y qa dentro de sus perímetros (ADR 0007-f);
+- `secretAccessor` de `app_workload` y `vm` sobre los secretos de cada entorno, y la regla de egreso de cada
+  perímetro hacia el proyecto `backup` (ADR 0013-g).
+
+Hasta esa segunda corrida, las cargas no leen secretos. Repite 2-security cada vez que crees o recrees
+`4-projects` de un entorno.
 
 Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 `terraform init -backend-config="bucket=$BUCKET"` y `terraform apply` en cada raíz:
@@ -110,9 +124,14 @@ Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 4. `3-networks/envs/dev`, `4-projects/envs/dev`, `5-workloads/envs/dev`
 5. lo mismo para `qa`
 6. lo mismo para `prod`
-7. `2-security` otra vez: agrega los proyectos de app y datos de dev y qa a sus perímetros (ADR 0007-f).
+7. `2-security` otra vez: perímetros de dev y qa, accesores de secretos y egreso de los tres entornos
+   (ADR 0007-f y 0013-g).
 
 Cada raíz de etapa ≥1 recibe `state_bucket` (`export TF_VAR_state_bucket=$BUCKET`).
+
+Lectura del estado: en el pipeline, cada SA de etapa solo lee los prefijos que consume, listados en
+`local.state_read_prefixes` de `stages/0-bootstrap/main.tf` (ADR 0008-g); la SA de plan lee todo. Un 403 al leer
+el estado de otra etapa significa que falta el prefijo en esa lista: agrégalo y aplica 0-bootstrap a mano.
 
 En la opción B, exporta también `TF_VAR_audit_retention_locked=true` antes de aplicar `1-org` (ver abajo).
 
@@ -147,7 +166,7 @@ Es irreversible: el bucket de auditoría no se puede borrar ni acortar su retenc
 - **Organización de prueba que se va a destruir:** define la variable del repositorio
   `AUDIT_RETENTION_LOCKED=false` antes del primer apply. Cambiarla después no desbloquea un bucket ya bloqueado.
 
-## 6. Comprobar
+## 7. Comprobar
 
 - Un segundo `plan` en cada raíz dice `No changes.`
 - `tests/e2e/connectivity.sh` pasa contra prod.
