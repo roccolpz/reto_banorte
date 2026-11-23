@@ -93,8 +93,8 @@ run "org_policies_y_firewall_jerarquico" {
   }
 
   assert {
-    condition     = toset(google_org_policy_policy.resource_locations.spec[0].rules[0].values[0].allowed_values) == toset(["in:us-central1-locations", "in:us-east4-locations"])
-    error_message = "Solo se permiten us-central1 y us-east4."
+    condition     = toset(google_org_policy_policy.resource_locations.spec[0].rules[0].values[0].allowed_values) == toset(["in:us-central1-locations", "in:us-east4-locations", "us", "US"])
+    error_message = "Solo se permiten us-central1, us-east4 y la multi-región us (bucket dual-region y su llave, ADR 0002-d)."
   }
 
   assert {
