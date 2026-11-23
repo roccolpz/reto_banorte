@@ -117,6 +117,16 @@ run "rejects_onprem_overlap" {
   expect_failures = [var.regions]
 }
 
+run "rejects_psa_onprem_overlap" {
+  command = plan
+
+  variables {
+    psa_cidr = "192.168.128.0/20"
+  }
+
+  expect_failures = [var.psa_cidr]
+}
+
 run "rejects_bad_env" {
   command = plan
 

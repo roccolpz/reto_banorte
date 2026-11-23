@@ -1,6 +1,6 @@
 output "host_project_id" {
   description = "Proyecto host de la Shared VPC del entorno."
-  value       = local.host_project_id
+  value       = var.host_project_id
 }
 
 output "network_id" {
@@ -36,4 +36,9 @@ output "dns_zone_name" {
 output "dns_domain" {
   description = "Dominio de la zona privada (<env>.gcp.acme.internal.)."
   value       = module.spoke.dns_domain
+}
+
+output "secure_tag_values" {
+  description = "Etiqueta segura -> `tagValues/<id>` (gke-nodes, vm). 4-projects otorga tagUser y 5-workloads las vincula."
+  value       = module.firewall.secure_tag_values
 }

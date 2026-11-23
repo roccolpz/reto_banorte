@@ -4,17 +4,17 @@ variable "project_id" {
 }
 
 variable "network" {
-  description = "Self link o nombre de la VPC a la que se aplican las reglas."
+  description = "Self link de la VPC a la que se asocia la política. Su último segmento es el nombre de la red."
   type        = string
 }
 
 variable "name_prefix" {
-  description = "Prefijo de los nombres de regla, p. ej. `acme-dev-net`. Cada regla se llama `<name_prefix>-fw-<llave>`."
+  description = "Prefijo de los nombres, p. ej. `acme-dev-net`. Política `<name_prefix>-fwp`, reglas `<name_prefix>-fw-<llave>`, llave de etiquetas `<name_prefix>-fw`."
   type        = string
 }
 
 variable "labels" {
-  description = "Etiquetas obligatorias del contrato. Las reglas de firewall no aceptan etiquetas; se validan para mantener la interfaz común de módulos."
+  description = "Etiquetas obligatorias del contrato. Las políticas de firewall y las etiquetas seguras no aceptan labels; se validan para mantener la interfaz común de módulos."
   type        = map(string)
 
   validation {
@@ -23,36 +23,14 @@ variable "labels" {
   }
 }
 
-variable "default_rules" {
-  description = "Si es true, crea el juego base de un entorno: deny-all de ingreso con logging, IAP, health checks de GCP, on-prem y deny explícito desde otros entornos."
-  type        = bool
-  default     = false
-}
-
-variable "onprem_cidrs" {
-  description = "Rangos on-prem permitidos por el juego base."
-  type        = list(string)
-  default     = ["192.168.0.0/16"]
-
-  validation {
-    condition     = alltrue([for c in var.onprem_cidrs : can(cidrhost(c, 0))])
-    error_message = "onprem_cidrs debe contener CIDR válidos."
-  }
-}
-
-variable "deny_source_cidrs" {
-  description = "Rangos de otros entornos que se bloquean de forma explícita (aislamiento lateral). Lista vacía = sin regla."
+variable "secure_tags" {
+  description = "Valores de etiqueta segura (propósito GCE_FIREWALL) que se crean bajo la llave `<name_prefix>-fw`, p. ej. `gke-nodes`, `vm`. Las reglas los usan en `target_tags`. Lista vacía = sin llave."
   type        = list(string)
   default     = []
-
-  validation {
-    condition     = alltrue([for c in var.deny_source_cidrs : can(cidrhost(c, 0))])
-    error_message = "deny_source_cidrs debe contener CIDR válidos."
-  }
 }
 
 variable "rules" {
-  description = "Reglas adicionales. Llave = sufijo del nombre. `action` es allow o deny; `protocols` lista {protocol, ports}."
+  description = "Reglas de la política. Llave = sufijo del nombre. `action` es allow o deny; `protocols` lista {protocol, ports}; `target_tags` lista valores de `secure_tags` (vacío = toda la VPC). Las prioridades no se repiten."
   type = map(object({
     description    = optional(string, "")
     direction      = optional(string, "INGRESS")
@@ -60,7 +38,7 @@ variable "rules" {
     priority       = optional(number, 1000)
     ranges         = list(string)
     protocols      = optional(list(object({ protocol = string, ports = optional(list(string), []) })), [{ protocol = "all" }])
-    target_tags    = optional(list(string))
+    target_tags    = optional(list(string), [])
     enable_logging = optional(bool, false)
   }))
   default = {}
@@ -71,12 +49,22 @@ variable "rules" {
   }
 
   validation {
-    condition     = alltrue([for r in values(var.rules) : r.priority >= 0 && r.priority <= 65535])
-    error_message = "priority debe estar entre 0 y 65535."
+    condition     = alltrue([for r in values(var.rules) : r.priority >= 0 && r.priority <= 2147483647])
+    error_message = "priority debe estar entre 0 y 2147483647."
+  }
+
+  validation {
+    condition     = length(distinct([for r in values(var.rules) : r.priority])) == length(var.rules)
+    error_message = "priority no se puede repetir dentro de una política de firewall."
   }
 
   validation {
     condition     = alltrue(flatten([for r in values(var.rules) : [for c in r.ranges : can(cidrhost(c, 0))]]))
     error_message = "ranges debe contener CIDR válidos."
+  }
+
+  validation {
+    condition     = alltrue(flatten([for r in values(var.rules) : [for t in r.target_tags : contains(var.secure_tags, t)]]))
+    error_message = "target_tags solo puede usar valores de secure_tags."
   }
 }

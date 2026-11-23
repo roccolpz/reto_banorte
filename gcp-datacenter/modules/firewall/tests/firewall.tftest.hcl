@@ -2,7 +2,7 @@ mock_provider "google" {}
 
 variables {
   project_id  = "acme-dev-net-host-0000"
-  network     = "projects/acme-dev-net-host-0000/global/networks/acme-dev-net-vpc"
+  network     = "https://www.googleapis.com/compute/v1/projects/acme-dev-net-host-0000/global/networks/acme-dev-net-vpc"
   name_prefix = "acme-dev-net"
   labels = {
     env         = "dev"
@@ -13,51 +13,59 @@ variables {
   }
 }
 
-run "default_rules_for_env" {
+run "politica_con_etiquetas_seguras" {
   command = plan
 
   variables {
-    default_rules     = true
-    deny_source_cidrs = ["10.20.0.0/16", "10.30.0.0/16", "10.31.0.0/16"]
+    secure_tags = ["gke-nodes", "vm"]
+    rules = {
+      allow-gke-master = {
+        priority    = 1000
+        ranges      = ["172.16.10.0/28"]
+        protocols   = [{ protocol = "tcp", ports = ["443", "10250"] }]
+        target_tags = ["gke-nodes"]
+      }
+      deny-all-ingress = {
+        action         = "deny"
+        priority       = 65000
+        ranges         = ["0.0.0.0/0"]
+        enable_logging = true
+      }
+    }
   }
 
   assert {
-    condition     = length(google_compute_firewall.this) == 5
-    error_message = "El juego base debe crear 5 reglas."
+    condition     = google_tags_tag_key.this[0].purpose == "GCE_FIREWALL" && google_tags_tag_key.this[0].purpose_data["network"] == "acme-dev-net-host-0000/acme-dev-net-vpc" && google_tags_tag_key.this[0].parent == "projects/acme-dev-net-host-0000"
+    error_message = "La llave de etiqueta segura debe tener propósito GCE_FIREWALL ligado a la VPC."
   }
 
   assert {
-    condition     = google_compute_firewall.this["deny-all-ingress"].priority == 65000 && length(google_compute_firewall.this["deny-all-ingress"].log_config) == 1
-    error_message = "deny-all-ingress debe tener prioridad baja (65000) y logging."
+    condition     = toset(keys(google_tags_tag_value.this)) == toset(["gke-nodes", "vm"])
+    error_message = "Debe existir un valor de etiqueta por cada secure_tags."
   }
 
   assert {
-    condition     = google_compute_firewall.this["allow-iap"].source_ranges == toset(["35.235.240.0/20"])
-    error_message = "allow-iap debe permitir solo 35.235.240.0/20."
+    condition     = google_compute_network_firewall_policy.this.name == "acme-dev-net-fwp" && google_compute_network_firewall_policy_association.this.attachment_target == var.network
+    error_message = "La política de firewall de red debe asociarse a la VPC."
   }
 
   assert {
-    condition     = google_compute_firewall.this["allow-health-checks"].source_ranges == toset(["130.211.0.0/22", "35.191.0.0/16"])
-    error_message = "allow-health-checks debe usar los rangos de health check de GCP."
+    condition     = google_compute_network_firewall_policy_rule.this["allow-gke-master"].match[0].src_ip_ranges == tolist(["172.16.10.0/28"]) && google_compute_network_firewall_policy_rule.this["allow-gke-master"].match[0].layer4_configs[0].ports == tolist(["443", "10250"])
+    error_message = "allow-gke-master: origen y puertos de la regla."
   }
 
   assert {
-    condition     = google_compute_firewall.this["allow-onprem"].source_ranges == toset(["192.168.0.0/16"])
-    error_message = "allow-onprem debe permitir 192.168.0.0/16."
+    condition     = length(google_compute_network_firewall_policy_rule.this["allow-gke-master"].target_secure_tags) == 1 && length(google_compute_network_firewall_policy_rule.this["deny-all-ingress"].target_secure_tags) == 0
+    error_message = "Solo las reglas con target_tags apuntan a etiquetas seguras; sin target_tags aplican a toda la VPC."
   }
 
   assert {
-    condition     = length(google_compute_firewall.this["deny-other-envs"].deny) == 1 && google_compute_firewall.this["deny-other-envs"].priority < google_compute_firewall.this["allow-onprem"].priority
-    error_message = "deny-other-envs debe negar y evaluarse antes que los allow."
-  }
-
-  assert {
-    condition     = google_compute_firewall.this["allow-iap"].name == "acme-dev-net-fw-allow-iap"
-    error_message = "El nombre debe seguir <name_prefix>-fw-<llave>."
+    condition     = google_compute_network_firewall_policy_rule.this["deny-all-ingress"].action == "deny" && google_compute_network_firewall_policy_rule.this["deny-all-ingress"].enable_logging == true && google_compute_network_firewall_policy_rule.this["deny-all-ingress"].rule_name == "acme-dev-net-fw-deny-all-ingress"
+    error_message = "deny-all-ingress: deny, con logging y nombre <name_prefix>-fw-<llave>."
   }
 }
 
-run "custom_rules_only" {
+run "sin_etiquetas_no_crea_llave" {
   command = plan
 
   variables {
@@ -70,17 +78,43 @@ run "custom_rules_only" {
   }
 
   assert {
-    condition     = keys(google_compute_firewall.this) == ["allow-dns"]
-    error_message = "Sin default_rules solo deben existir las reglas pasadas."
+    condition     = length(google_tags_tag_key.this) == 0 && keys(google_compute_network_firewall_policy_rule.this) == ["allow-dns"]
+    error_message = "Sin secure_tags no se crea llave; solo existen las reglas pasadas."
   }
 
   assert {
-    condition     = length(google_compute_firewall.this["allow-dns"].allow) == 2
-    error_message = "allow-dns debe tener dos bloques allow (udp y tcp)."
+    condition     = length(google_compute_network_firewall_policy_rule.this["allow-dns"].match[0].layer4_configs) == 2
+    error_message = "allow-dns debe tener dos layer4_configs (udp y tcp)."
   }
 }
 
-run "rejects_bad_action" {
+run "rechaza_etiqueta_desconocida" {
+  command = plan
+
+  variables {
+    secure_tags = ["vm"]
+    rules = {
+      bad = { ranges = ["10.0.0.0/8"], target_tags = ["gke-nodes"] }
+    }
+  }
+
+  expect_failures = [var.rules]
+}
+
+run "rechaza_prioridad_repetida" {
+  command = plan
+
+  variables {
+    rules = {
+      a = { ranges = ["10.0.0.0/8"], priority = 1000 }
+      b = { ranges = ["10.1.0.0/16"], priority = 1000 }
+    }
+  }
+
+  expect_failures = [var.rules]
+}
+
+run "rechaza_accion_invalida" {
   command = plan
 
   variables {
@@ -92,7 +126,7 @@ run "rejects_bad_action" {
   expect_failures = [var.rules]
 }
 
-run "rejects_missing_labels" {
+run "rechaza_etiquetas_incompletas" {
   command = plan
 
   variables {
