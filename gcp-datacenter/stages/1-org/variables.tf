@@ -66,15 +66,15 @@ variable "labels" {
 }
 
 variable "groups" {
-  description = "Correos de los grupos humanos (Fase 3, §3.2). Llaves válidas: org_admins, billing_admins, security_admins, network_admins, devops, developers, auditors. Vacío: no se crean bindings."
+  description = "Correos de los grupos humanos (Fase 3, §3.2). Llaves válidas: org_admins, break_glass, billing_admins, security_admins, network_admins, devops, developers, auditors. break_glass es el acceso de emergencia (ADR 0009-g). Vacío: no se crean bindings."
   type        = map(string)
   default     = {}
 
   validation {
     condition = alltrue([
-      for k in keys(var.groups) : contains(["org_admins", "billing_admins", "security_admins", "network_admins", "devops", "developers", "auditors"], k)
+      for k in keys(var.groups) : contains(["org_admins", "break_glass", "billing_admins", "security_admins", "network_admins", "devops", "developers", "auditors"], k)
     ])
-    error_message = "groups solo acepta las llaves org_admins, billing_admins, security_admins, network_admins, devops, developers y auditors."
+    error_message = "groups solo acepta las llaves org_admins, break_glass, billing_admins, security_admins, network_admins, devops, developers y auditors."
   }
 }
 

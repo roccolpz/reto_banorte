@@ -17,6 +17,19 @@ locals {
   # La SA de plan solo lee: no tiene prefijo de escritura.
   service_accounts = merge({ plan = { account_id = "sa-tf-plan", prefix = null } }, local.stage_sas)
 
+  # Prefijos de estado que cada etapa lee con terraform_remote_state (R4). Agregar aquí el prefijo antes de
+  # leer un estado nuevo; la SA de plan lee todo el bucket (ADR 0008-g).
+  state_read_prefixes = merge(
+    {
+      "1-org"          = ["0-bootstrap"]
+      "2-security"     = concat(["0-bootstrap", "1-org"], [for e in local.envs : "4-projects/${e}"])
+      "3-networks-hub" = ["1-org"]
+    },
+    { for e in local.envs : "3-networks-${e}" => ["1-org", "3-networks/hub"] },
+    { for e in local.envs : "4-projects-${e}" => ["0-bootstrap", "1-org", "2-security", "3-networks/${e}"] },
+    { for e in local.envs : "5-workloads-${e}" => ["2-security", "3-networks/hub", "3-networks/${e}", "4-projects/${e}"] },
+  )
+
   # Roles a nivel organización que se necesitan antes de que exista 1-org.
   # Los permisos de las etapas 2 a 5 los otorga 1-org sobre las carpetas y proyectos que crea.
   org_roles = {
@@ -28,6 +41,9 @@ locals {
       "roles/compute.orgFirewallPolicyAdmin",
       "roles/compute.orgSecurityResourceAdmin",
       "roles/logging.configWriter",
+      # Notificaciones de SCC y roles a medida (kms_key_iam_admin, tag_value_iam_admin) que crea 1-org.
+      "roles/securitycenter.notificationConfigEditor",
+      "roles/iam.organizationRoleAdmin",
     ]
     plan = [
       "roles/viewer",
@@ -35,6 +51,7 @@ locals {
       "roles/orgpolicy.policyViewer",
       "roles/resourcemanager.folderViewer",
       "roles/accesscontextmanager.policyReader",
+      "roles/securitycenter.notificationConfigViewer",
     ]
   }
   org_bindings = {
@@ -48,6 +65,25 @@ locals {
   wif_principal_repo = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repository}"
   prod_gated_common  = ["1-org", "2-security", "3-networks-hub"]
   wif_principal_prod = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.environment/prod"
+
+  # Las etapas >= 1 usan la semilla como billing_project (user_project_override),
+  # así que aquí van las APIs que llaman a nivel organización.
+  seed_apis = [
+    "accesscontextmanager.googleapis.com",
+    "cloudbilling.googleapis.com",
+    "cloudkms.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
+    "compute.googleapis.com",
+    "iam.googleapis.com",
+    "iamcredentials.googleapis.com",
+    "logging.googleapis.com",
+    "orgpolicy.googleapis.com",
+    "pubsub.googleapis.com",
+    "securitycenter.googleapis.com",
+    "serviceusage.googleapis.com",
+    "storage.googleapis.com",
+    "sts.googleapis.com",
+  ]
 }
 
 # ---------------------------------------------------------------------------
@@ -70,22 +106,7 @@ module "seed_project" {
   # El proyecto semilla guarda el estado de todas las etapas: no se borra con destroy.
   deletion_policy = "PREVENT"
 
-  # Las etapas >= 1 usan la semilla como billing_project (user_project_override),
-  # así que aquí van las APIs que llaman a nivel organización.
-  activate_apis = [
-    "accesscontextmanager.googleapis.com",
-    "cloudbilling.googleapis.com",
-    "cloudkms.googleapis.com",
-    "cloudresourcemanager.googleapis.com",
-    "compute.googleapis.com",
-    "iam.googleapis.com",
-    "iamcredentials.googleapis.com",
-    "logging.googleapis.com",
-    "orgpolicy.googleapis.com",
-    "serviceusage.googleapis.com",
-    "storage.googleapis.com",
-    "sts.googleapis.com",
-  ]
+  activate_apis = local.seed_apis
 }
 
 # ---------------------------------------------------------------------------
@@ -151,13 +172,25 @@ resource "google_service_account" "stage" {
   display_name = "Terraform ${each.key}"
 }
 
-# Todas leen el estado completo: cada etapa lee las salidas de las anteriores con terraform_remote_state.
+# Cada etapa lista el bucket (backend gcs) y lee solo los prefijos que consume (R4); plan lee todo (ADR 0008-g).
 resource "google_storage_bucket_iam_member" "state_reader" {
   for_each = local.service_accounts
 
   bucket = google_storage_bucket.state.name
   role   = "roles/storage.objectViewer"
   member = google_service_account.stage[each.key].member
+
+  dynamic "condition" {
+    for_each = each.key == "plan" ? [] : [local.state_read_prefixes[each.key]]
+    content {
+      title       = "lee-${each.key}"
+      description = "Listar el bucket y leer ${join(", ", condition.value)}"
+      expression = join(" || ", concat(
+        ["resource.type == \"storage.googleapis.com/Bucket\""],
+        [for prefix in condition.value : "resource.name.startsWith(\"projects/_/buckets/${google_storage_bucket.state.name}/objects/${prefix}/\")"],
+      ))
+    }
+  }
 }
 
 # Cada SA de etapa escribe (estado y lock) solo bajo su prefijo.

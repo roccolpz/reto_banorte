@@ -93,7 +93,7 @@ run "org_policies_y_firewall_jerarquico" {
   }
 
   assert {
-    condition     = toset(google_org_policy_policy.resource_locations.spec[0].rules[0].values[0].allowed_values) == toset(["in:us-central1-locations", "in:us-east4-locations", "us", "US"])
+    condition     = toset(google_org_policy_policy.resource_locations.spec[0].rules[0].values[0].allowed_values) == toset(["in:us-central1-locations", "in:us-east4-locations", "us"])
     error_message = "Solo se permiten us-central1, us-east4 y la multi-región us (bucket dual-region y su llave, ADR 0002-d)."
   }
 
@@ -152,6 +152,81 @@ run "org_policies_y_firewall_jerarquico" {
     condition     = length([for k in keys(google_folder_iam_member.this) : k if startswith(k, "5-workloads-dev|folder|prod|")]) == 0
     error_message = "La SA de dev no recibe roles en la carpeta prod."
   }
+
+  assert {
+    condition     = length([for k in keys(google_folder_iam_member.this) : k if startswith(k, "5-workloads-") && endswith(k, "|roles/iam.serviceAccountUser")]) == 0
+    error_message = "5-workloads no recibe serviceAccountUser sobre toda la carpeta: 4-projects lo da por SA (P10)."
+  }
+}
+
+run "roles_a_medida_y_tags_seguros" {
+  command = apply
+
+  assert {
+    condition = output.custom_role_ids == {
+      kms_key_iam_admin   = "organizations/000000000000/roles/kms_key_iam_admin"
+      tag_value_iam_admin = "organizations/000000000000/roles/tag_value_iam_admin"
+    }
+    error_message = "custom_role_ids expone los dos roles a medida como organizations/<id>/roles/<nombre> (CONTRATO §6)."
+  }
+
+  assert {
+    condition = toset(google_organization_iam_custom_role.this["kms_key_iam_admin"].permissions) == toset([
+      "cloudkms.cryptoKeys.get", "cloudkms.cryptoKeys.getIamPolicy", "cloudkms.cryptoKeys.setIamPolicy",
+    ])
+    error_message = "kms_key_iam_admin solo administra el IAM de las llaves, sin crear ni destruir versiones (P8)."
+  }
+
+  assert {
+    condition = toset(google_organization_iam_custom_role.this["tag_value_iam_admin"].permissions) == toset([
+      "resourcemanager.tagValues.get", "resourcemanager.tagValues.getIamPolicy", "resourcemanager.tagValues.setIamPolicy",
+    ])
+    error_message = "tag_value_iam_admin solo administra el IAM de los valores de tag."
+  }
+
+  assert {
+    condition     = google_project_iam_member.this["3-networks-dev|project|net-host-dev|roles/resourcemanager.tagAdmin"].project == "acme-dev-net-host-a1b2"
+    error_message = "3-networks-<env> crea las llaves y valores de tag seguros en su net-host."
+  }
+
+  assert {
+    condition     = contains(local.net_host_apis, "cloudresourcemanager.googleapis.com")
+    error_message = "Los net-host habilitan Resource Manager: los tags seguros GCE_FIREWALL viven ahí."
+  }
+
+  assert {
+    condition     = google_project_iam_member.this["4-projects-prod|project|net-host-prod|organizations/000000000000/roles/tag_value_iam_admin"].member == "serviceAccount:sa-tf-4-proj-prod@acme-bootstrap-seed-a1b2.iam.gserviceaccount.com"
+    error_message = "4-projects-<env> concede tagUser sobre los valores de tag de su net-host con el rol a medida."
+  }
+
+  assert {
+    condition     = toset(keys(output.common_project_numbers)) == toset(["net_hub", "logging", "security", "backup"])
+    error_message = "common_project_numbers da el número de cada proyecto de common (destino de egreso de VPC-SC)."
+  }
+}
+
+run "notificaciones_de_scc" {
+  command = apply
+
+  assert {
+    condition     = google_pubsub_topic.scc_findings.project == "acme-common-security-a1b2"
+    error_message = "El tópico de hallazgos de SCC vive en el proyecto de seguridad."
+  }
+
+  assert {
+    condition     = google_scc_v2_organization_notification_config.findings.pubsub_topic == google_pubsub_topic.scc_findings.id
+    error_message = "La notificación de SCC publica en el tópico de hallazgos."
+  }
+
+  assert {
+    condition     = google_scc_v2_organization_notification_config.findings.organization == "000000000000" && google_scc_v2_organization_notification_config.findings.streaming_config[0].filter == "state = \"ACTIVE\""
+    error_message = "Se notifican los hallazgos activos de toda la organización."
+  }
+
+  assert {
+    condition     = google_pubsub_subscription.scc_findings.topic == google_pubsub_topic.scc_findings.id
+    error_message = "Una suscripción retiene los hallazgos para quien los consuma."
+  }
 }
 
 run "auditoria_con_retencion_no_bloqueada_por_defecto" {
@@ -179,6 +254,7 @@ run "grupos_y_dominios_cuando_se_configuran" {
   variables {
     groups = {
       org_admins     = "gcp-org-admins@example.com"
+      break_glass    = "gcp-break-glass@example.com"
       billing_admins = "gcp-billing-admins@example.com"
       auditors       = "gcp-auditors@example.com"
     }
@@ -187,8 +263,17 @@ run "grupos_y_dominios_cuando_se_configuran" {
   }
 
   assert {
-    condition     = contains(keys(local.group_bindings), "org_admins|org|org|roles/resourcemanager.organizationAdmin")
-    error_message = "gcp-org-admins administra la organización."
+    condition = (
+      contains(keys(local.group_bindings), "break_glass|org|org|roles/resourcemanager.organizationAdmin") &&
+      !contains(keys(local.group_bindings), "org_admins|org|org|roles/resourcemanager.organizationAdmin") &&
+      contains(keys(local.group_bindings), "org_admins|org|org|roles/resourcemanager.organizationViewer")
+    )
+    error_message = "gcp-org-admins lee la organización; el acceso de administración es de emergencia, en break_glass (ADR 0009-g)."
+  }
+
+  assert {
+    condition     = contains(keys(local.group_bindings), "auditors|org|org|roles/securitycenter.findingsViewer")
+    error_message = "gcp-auditors consulta los hallazgos de SCC."
   }
 
   assert {
@@ -214,6 +299,44 @@ run "grupos_y_dominios_cuando_se_configuran" {
   assert {
     condition     = google_storage_bucket.audit.retention_policy[0].is_locked == true
     error_message = "audit_retention_locked bloquea la retención."
+  }
+}
+
+run "grupos_humanos_solo_leen_fuera_de_break_glass" {
+  command = plan
+
+  variables {
+    groups = {
+      org_admins      = "gcp-org-admins@example.com"
+      break_glass     = "gcp-break-glass@example.com"
+      billing_admins  = "gcp-billing-admins@example.com"
+      security_admins = "gcp-security-admins@example.com"
+      network_admins  = "gcp-network-admins@example.com"
+      devops          = "gcp-devops@example.com"
+      developers      = "gcp-developers@example.com"
+      auditors        = "gcp-auditors@example.com"
+    }
+  }
+
+  # Roles de escritura que la revisión encontró en grupos que solo "revisan" (Fase 3 §3.2).
+  assert {
+    condition = length([for k, b in local.group_bindings : k if b.group != "break_glass" && contains([
+      "roles/resourcemanager.organizationAdmin", "roles/resourcemanager.folderAdmin", "roles/orgpolicy.policyAdmin",
+      "roles/securitycenter.admin", "roles/cloudkms.admin", "roles/compute.networkAdmin", "roles/container.admin",
+      "roles/compute.instanceAdmin.v1", "roles/container.developer",
+    ], b.role)]) == 0
+    error_message = "Solo break_glass recibe roles de escritura; los cambios ordinarios van por pull request."
+  }
+
+  assert {
+    condition = alltrue([for g in ["devops", "developers"] : alltrue([for e in ["dev", "qa", "prod"] :
+    contains(keys(local.group_bindings), "${g}|folder|${e}|roles/viewer")])])
+    error_message = "gcp-devops y gcp-developers leen los tres entornos."
+  }
+
+  assert {
+    condition     = contains(keys(local.group_bindings), "security_admins|org|org|roles/securitycenter.adminViewer")
+    error_message = "gcp-security-admins revisa SCC sin administrarlo."
   }
 }
 

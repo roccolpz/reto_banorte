@@ -7,8 +7,8 @@ variables {
   member_projects     = ["111111111111"]
 }
 
-# Interfaz legada (stages/test-orchestration): sin `enforce`, el perímetro sigue aplicado en `status`.
-run "legado_aplica_en_status" {
+# Sin `enforce` el perímetro queda en dry-run (CONTRATO §8).
+run "default_es_dry_run" {
   command = plan
 
   assert {
@@ -17,13 +17,31 @@ run "legado_aplica_en_status" {
   }
 
   assert {
-    condition     = length(google_access_context_manager_service_perimeter.perimeter.status) == 1 && length(google_access_context_manager_service_perimeter.perimeter.spec) == 0
-    error_message = "Con enforce = true (default legado) solo debe existir el bloque status."
+    condition     = length(google_access_context_manager_service_perimeter.perimeter.status) == 0 && length(google_access_context_manager_service_perimeter.perimeter.spec) == 1
+    error_message = "Sin enforce solo debe existir el bloque spec (dry-run)."
   }
 
   assert {
-    condition     = google_access_context_manager_service_perimeter.perimeter.status[0].resources == toset(["projects/111111111111"])
+    condition     = google_access_context_manager_service_perimeter.perimeter.spec[0].resources == toset(["projects/111111111111"])
     error_message = "member_projects debe convertirse a projects/<número>."
+  }
+
+  assert {
+    condition     = output.enforced == false
+    error_message = "La salida enforced debe ser false en dry-run."
+  }
+}
+
+run "aplicado_usa_status" {
+  command = plan
+
+  variables {
+    enforce = true
+  }
+
+  assert {
+    condition     = length(google_access_context_manager_service_perimeter.perimeter.status) == 1 && length(google_access_context_manager_service_perimeter.perimeter.spec) == 0
+    error_message = "Con enforce = true solo debe existir el bloque status."
   }
 
   assert {
@@ -38,7 +56,6 @@ run "dry_run_usa_spec" {
   variables {
     enforce            = false
     ingress_identities = ["serviceAccount:sa-tf-plan@acme-bootstrap-seed-ab12.iam.gserviceaccount.com"]
-    egress_identities  = ["serviceAccount:sa-tf-plan@acme-bootstrap-seed-ab12.iam.gserviceaccount.com"]
   }
 
   assert {
@@ -61,17 +78,61 @@ run "dry_run_usa_spec" {
     error_message = "La regla de ingreso debe listar las identidades dadas."
   }
 
-  assert {
-    condition     = length(google_access_context_manager_service_perimeter.perimeter.spec[0].egress_policies) == 1
-    error_message = "Debe existir una regla de egreso cuando hay egress_identities."
+}
+
+# Fase 3 §5.2: cada regla de egreso nombra identidades, destinos y servicios.
+run "egreso_explicito" {
+  command = plan
+
+  variables {
+    enforce = true
+    egress_rules = [{
+      identities = ["serviceAccount:app-workload@acme-dev-app-ab12.iam.gserviceaccount.com"]
+      resources  = ["projects/222222222222"]
+      services   = ["storage.googleapis.com"]
+    }]
   }
+
+  assert {
+    condition     = length(google_access_context_manager_service_perimeter.perimeter.status[0].egress_policies) == 1
+    error_message = "Cada elemento de egress_rules debe crear una regla de egreso."
+  }
+
+  assert {
+    condition     = google_access_context_manager_service_perimeter.perimeter.status[0].egress_policies[0].egress_from[0].identities == toset(["serviceAccount:app-workload@acme-dev-app-ab12.iam.gserviceaccount.com"])
+    error_message = "La regla de egreso debe listar solo las identidades dadas."
+  }
+
+  assert {
+    condition     = google_access_context_manager_service_perimeter.perimeter.status[0].egress_policies[0].egress_to[0].resources == toset(["projects/222222222222"])
+    error_message = "El destino de la regla de egreso debe ser el proyecto dado, no '*'."
+  }
+
+  assert {
+    condition     = [for o in google_access_context_manager_service_perimeter.perimeter.status[0].egress_policies[0].egress_to[0].operations : o.service_name] == ["storage.googleapis.com"]
+    error_message = "La regla de egreso debe permitir solo los servicios dados."
+  }
+}
+
+run "egreso_destino_invalido_falla" {
+  command = plan
+
+  variables {
+    egress_rules = [{
+      identities = ["serviceAccount:app-workload@acme-dev-app-ab12.iam.gserviceaccount.com"]
+      resources  = ["*"]
+      services   = ["storage.googleapis.com"]
+    }]
+  }
+
+  expect_failures = [var.egress_rules]
 }
 
 run "sin_identidades_no_hay_reglas" {
   command = plan
 
   assert {
-    condition     = length(google_access_context_manager_service_perimeter.perimeter.status[0].ingress_policies) == 0 && length(google_access_context_manager_service_perimeter.perimeter.status[0].egress_policies) == 0
+    condition     = length(google_access_context_manager_service_perimeter.perimeter.spec[0].ingress_policies) == 0 && length(google_access_context_manager_service_perimeter.perimeter.spec[0].egress_policies) == 0
     error_message = "Sin identidades no se crean reglas de ingreso ni egreso."
   }
 }
