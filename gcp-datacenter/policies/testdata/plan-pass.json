@@ -1,0 +1,214 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.9.8",
+  "resource_changes": [
+    {
+      "address": "google_storage_bucket.data",
+      "mode": "managed",
+      "type": "google_storage_bucket",
+      "name": "data",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "acme-prod-data-bkt-1a2b",
+          "location": "US-CENTRAL1",
+          "public_access_prevention": "enforced",
+          "uniform_bucket_level_access": true,
+          "labels": {
+            "env": "prod",
+            "app": "lz",
+            "owner": "plataforma",
+            "cost_center": "TI-001",
+            "managed_by": "terraform"
+          },
+          "terraform_labels": {
+            "env": "prod",
+            "app": "lz",
+            "owner": "plataforma",
+            "cost_center": "TI-001",
+            "managed_by": "terraform"
+          }
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "google_compute_instance_template.app",
+      "mode": "managed",
+      "type": "google_compute_instance_template",
+      "name": "app",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name_prefix": "acme-prod-app-",
+          "labels": {
+            "env": "prod",
+            "app": "lz",
+            "owner": "plataforma",
+            "cost_center": "TI-001",
+            "managed_by": "terraform"
+          },
+          "terraform_labels": {
+            "env": "prod",
+            "app": "lz",
+            "owner": "plataforma",
+            "cost_center": "TI-001",
+            "managed_by": "terraform"
+          },
+          "network_interface": [
+            {
+              "subnetwork": "acme-prod-net-app-usc1",
+              "access_config": []
+            }
+          ]
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "google_sql_database_instance.db",
+      "mode": "managed",
+      "type": "google_sql_database_instance",
+      "name": "db",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "acme-prod-data-sql",
+          "database_version": "POSTGRES_16",
+          "settings": [
+            {
+              "tier": "db-custom-2-7680",
+              "user_labels": {
+                "env": "prod",
+                "app": "lz",
+                "owner": "plataforma",
+                "cost_center": "TI-001",
+                "managed_by": "terraform"
+              },
+              "ip_configuration": [
+                {
+                  "ipv4_enabled": false,
+                  "private_network": "projects/acme-prod-net-host-1a2b/global/networks/acme-prod-net-vpc"
+                }
+              ]
+            }
+          ]
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "google_container_cluster.gke",
+      "mode": "managed",
+      "type": "google_container_cluster",
+      "name": "gke",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "acme-prod-app-gke",
+          "resource_labels": {
+            "env": "prod",
+            "app": "lz",
+            "owner": "plataforma",
+            "cost_center": "TI-001",
+            "managed_by": "terraform"
+          },
+          "terraform_labels": {
+            "env": "prod",
+            "app": "lz",
+            "owner": "plataforma",
+            "cost_center": "TI-001",
+            "managed_by": "terraform"
+          },
+          "private_cluster_config": [
+            {
+              "enable_private_nodes": true,
+              "enable_private_endpoint": false,
+              "master_ipv4_cidr_block": "172.16.30.0/28"
+            }
+          ]
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "google_compute_firewall.allow_iap",
+      "mode": "managed",
+      "type": "google_compute_firewall",
+      "name": "allow_iap",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "name": "acme-prod-net-fw-allow-iap",
+          "direction": "INGRESS",
+          "allow": [
+            {
+              "protocol": "tcp",
+              "ports": [
+                "22"
+              ]
+            }
+          ],
+          "deny": [],
+          "source_ranges": [
+            "35.235.240.0/20"
+          ]
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "google_service_account.vm",
+      "mode": "managed",
+      "type": "google_service_account",
+      "name": "vm",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "before": null,
+        "after": {
+          "account_id": "acme-prod-vm",
+          "display_name": "VM"
+        },
+        "after_unknown": {}
+      }
+    },
+    {
+      "address": "google_storage_bucket.old",
+      "mode": "managed",
+      "type": "google_storage_bucket",
+      "name": "old",
+      "provider_name": "registry.terraform.io/hashicorp/google",
+      "change": {
+        "actions": [
+          "delete"
+        ],
+        "before": null,
+        "after": null,
+        "after_unknown": {}
+      }
+    }
+  ]
+}
