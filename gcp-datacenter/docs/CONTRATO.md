@@ -125,6 +125,7 @@ Nombres exactos; los consumidores dependen de ellos.
 **1-org**
 - `folder_ids` (map(string)): `bootstrap`, `common`, `dev`, `qa`, `prod` → `folders/<id>`
 - `common_project_ids` (map(string)): `net_hub`, `logging`, `security`, `backup`
+- `common_project_numbers` (map(string)): mismas llaves → número de proyecto (2-security lo usa como destino de egreso de VPC-SC, ADR 0013-g)
 - `net_host_project_ids` (map(string)): `dev`, `qa`, `prod` (proyectos ya habilitados como Shared VPC host por 1-org NO; los habilita 3-networks)
 - `audit_log_bucket` (string)
 - `custom_role_ids` (map(string)): `kms_key_iam_admin`, `tag_value_iam_admin` → `organizations/<id>/roles/<nombre>` (roles mínimos para que 4-projects otorgue permisos sobre llaves y valores de etiqueta sin poder destruirlos)
@@ -165,12 +166,12 @@ Nombres exactos; los consumidores dependen de ellos.
 - Valores no secretos por raíz en `terraform.tfvars.example` (el `.gitignore` excluye `*.tfvars`).
   En CI llegan como `TF_VAR_*` desde variables de GitHub: `TF_VAR_org_id`, `TF_VAR_billing_account`, `TF_VAR_state_bucket`, `TF_VAR_suffix`.
 - Raíces de etapa ≥1: `provider "google" { billing_project = <seed o proyecto propio>, user_project_override = true }` cuando el recurso lo requiera (org policies, Access Context Manager).
-- Grupos humanos (Fase 3, §3.2) como variable `groups` (map(string)); si está vacía no se crean bindings, para que el apply funcione en una org sin grupos.
+- Grupos humanos (Fase 3, §3.2) como variable `groups` (map(string)); si está vacía no se crean bindings, para que el apply funcione en una org sin grupos. Los grupos ordinarios solo leen; `break_glass` tiene la administración de emergencia y queda sin miembros fuera de un incidente (ADR 0009-g).
 
 ## 8. Recursos irreversibles o caros (defaults seguros)
 
 - Retención bloqueada del bucket de auditoría: `var.audit_retention_locked`, default `false`. En la entrega real se aplica 1-org con `TF_VAR_audit_retention_locked=true` (`docs/runbooks/bootstrap-first-apply.md`). Bloquear es irreversible.
-- VPC-SC: `var.vpc_sc_enforce`, default `false` (dry-run) para no romper el pipeline; ingreso explícito para las SA de las etapas.
+- VPC-SC: `var.vpc_sc_enforce` (map(bool) por entorno), default `false` en los tres (dry-run) para no romper el pipeline; ingreso explícito para las SA de las etapas y egreso explícito de `app_workload` al proyecto de respaldo (ADR 0013-g).
 - Cloud SQL: HA y réplica DR (`var.sql_ha`, `var.enable_dr_replica`) y bucket dual-region (`var.bucket_dual_region`) con default `null`: `true` en prod, `false` en dev/qa, para que el pipeline sin tfvars no despliegue prod sin ellos.
 - GKE: zonal en dev/qa, regional en prod (`var.regional`). Máquinas pequeñas por default.
 - `deletion_protection` configurable; default `false` en dev/qa para que `terraform destroy` en dev limpie todo.
