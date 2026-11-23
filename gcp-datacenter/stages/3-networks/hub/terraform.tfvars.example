@@ -8,8 +8,8 @@ labels = {
   cost_center = "infra"
 }
 
-# Agregar "us-east4" para una segunda VPN (DR).
-vpn_regions = ["us-central1"]
+# HA VPN y Cloud Router en ambas regiones (us-east4 = DR). Para un laboratorio barato, solo ["us-central1"].
+vpn_regions = ["us-central1", "us-east4"]
 
 # Vacío: se reenvía al forwarder entrante de onprem-sim. Con un on-prem real, poner aquí sus DNS.
 onprem_dns_target_ips = []

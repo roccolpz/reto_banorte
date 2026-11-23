@@ -12,7 +12,8 @@ locals {
   corp_dns_domain = "corp.acme.internal."
 
   # Destino del reenvío DNS: override explícito o la IP del forwarder entrante de onprem-sim.
-  onprem_dns_target_ips = coalescelist(var.onprem_dns_target_ips, data.google_compute_addresses.onprem_dns.addresses[*].address)
+  # Si está vacío, la postcondición del data source corta el apply con un mensaje claro (P9).
+  onprem_dns_target_ips = length(var.onprem_dns_target_ips) > 0 ? var.onprem_dns_target_ips : data.google_compute_addresses.onprem_dns.addresses[*].address
 }
 
 # --- Hub: VPC, NCC (STAR), reenvío DNS y política entrante ---
@@ -61,10 +62,12 @@ module "onprem_firewall" {
   rules = {
     allow-gcp = {
       description = "Tráfico desde GCP por la VPN, incluidas las consultas reenviadas por Cloud DNS (35.199.192.0/19)."
+      priority    = 1000
       ranges      = ["10.0.0.0/8", "35.199.192.0/19"]
     }
     allow-iap = {
       description = "SSH y RDP por IAP."
+      priority    = 1010
       ranges      = ["35.235.240.0/20"]
       protocols   = [{ protocol = "tcp", ports = ["22", "3389"] }]
     }
@@ -115,6 +118,13 @@ data "google_compute_addresses" "onprem_dns" {
   filter  = "(purpose = \"DNS_RESOLVER\") AND (subnetwork = \"${google_compute_subnetwork.onprem.self_link}\")"
 
   depends_on = [google_dns_policy.onprem_inbound]
+
+  lifecycle {
+    postcondition {
+      condition     = length(self.addresses) > 0 || length(var.onprem_dns_target_ips) > 0
+      error_message = "GCP aún no reservó la IP DNS_RESOLVER del forwarder entrante de onprem-sim, así que la zona de reenvío del hub no tendría destino. Vuelva a correr el apply en unos minutos, o defina onprem_dns_target_ips y revise el filtro (purpose DNS_RESOLVER y subred onprem-sim-usc1)."
+    }
+  }
 }
 
 # --- HA VPN hub <-> onprem-sim por región, registrada como spoke híbrido (grupo center) ---

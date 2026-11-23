@@ -8,9 +8,29 @@ variable "env" {
   }
 }
 
-variable "state_bucket" {
-  description = "Bucket GCS del estado (lee 1-org y 3-networks/hub)."
+variable "host_project_id" {
+  description = "Proyecto host de la Shared VPC del entorno (salida net_host_project_ids de 1-org)."
   type        = string
+}
+
+variable "hub_network_self_link" {
+  description = "Self link de la VPC hub (salida de 3-networks/hub)."
+  type        = string
+}
+
+variable "ncc_hub_id" {
+  description = "ID del hub de NCC (salida de 3-networks/hub)."
+  type        = string
+}
+
+variable "corp_dns_domain" {
+  description = "Dominio DNS corporativo que se reenvía a on-prem (salida de 3-networks/hub)."
+  type        = string
+}
+
+variable "onprem_cidrs" {
+  description = "Rangos on-prem (salida de 3-networks/hub). Solo entran por HTTP/HTTPS a las cargas etiquetadas."
+  type        = list(string)
 }
 
 variable "prefix" {
