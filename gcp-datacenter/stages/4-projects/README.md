@@ -12,8 +12,9 @@ Qué hace `modules/env`:
 - Cuentas `gke_nodes`, `app_workload` y `vm` con roles mínimos.
 - `roles/cloudkms.cryptoKeyEncrypterDecrypter` sobre `kms_keys[env]` de 2-security. El prefijo del propósito elige el
   agente: `storage*` → Cloud Storage (datos), `sql*` → Cloud SQL (datos), `gke*` → GKE (app).
-- Proyectos de app y datos en el perímetro VPC-SC del entorno: spec dry-run con `vpc_sc_enforce = false` (default),
-  status aplicado con `true`. Debe coincidir con 2-security.
+- Proyectos de app y datos en el perímetro VPC-SC del entorno, solo en prod (`add_to_perimeter`): spec dry-run con
+  `vpc_sc_enforce = false` (default), status aplicado con `true`. Debe coincidir con 2-security. En dev y qa los
+  agrega 2-security, porque la SA de esos entornos no tiene `policyEditor` (ADR 0007-f).
 - Permisos de la SA `5-workloads-<env>` de 0-bootstrap: roles de proyecto que 1-org no da en el folder
   (`deployer_roles`), `networkUser` en el host, `serviceAccountUser` sobre `gke_nodes` y `vm`, y `serviceAccountAdmin`
   solo sobre `app_workload` (para el binding de Workload Identity).

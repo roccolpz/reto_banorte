@@ -22,6 +22,6 @@ output "access_policy_name" {
 }
 
 output "perimeter_names" {
-  description = "env → accessPolicies/<n>/servicePerimeters/<nombre>. 4-projects agrega los proyectos de app y datos."
+  description = "env → accessPolicies/<n>/servicePerimeters/<nombre>. Los proyectos de app y datos los agrega 4-projects-prod (prod) o esta etapa (dev, qa; ADR 0007-f)."
   value       = { for env, m in module.perimeter : env => m.name }
 }

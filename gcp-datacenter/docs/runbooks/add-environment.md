@@ -27,7 +27,7 @@ Comprueba: el PR muestra el plan de las raíces nuevas, y después del merge `ap
 
 1. En `4-projects/envs/<env>`, agrega el proyecto con el mismo módulo que usan los proyectos `app` y `data`:
    nombre `acme-<env>-<dominio>-xxxx` (máx. 30 caracteres), las 5 etiquetas, adjunto a la Shared VPC del entorno.
-2. Si el proyecto guarda datos, agrégalo al perímetro de VPC-SC del entorno (4-projects agrega los proyectos al
-   perímetro; 2-security ignora cambios en esa lista).
+2. Si el proyecto guarda datos, agrégalo al perímetro de VPC-SC del entorno: en prod desde 4-projects; en dev y qa
+   desde 2-security, que lee las salidas de `4-projects/<env>` (ADR 0007-f). El perímetro ignora cambios en esa lista.
 3. Si necesita SA propias, agrégalas a la salida `service_accounts` y documenta la llave en el contrato §6.
 4. Abre el PR; revisa el plan y que las políticas pasen. El apply corre en el orden normal.

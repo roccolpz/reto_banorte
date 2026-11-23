@@ -7,8 +7,8 @@ cambia `local.env`.
   nodos con la SA `gke_nodes`, secretos cifrados con la llave `gke`, master CIDR del contrato §5.
 - Workload Identity: la KSA `ksa_namespace/ksa_name` actúa como `app_workload`.
 - Cloud SQL privado en el proyecto de datos (`modules/cloud-sql`) con la llave `sql`. `sql_ha` y `enable_dr_replica`
-  en false por default; la réplica usa `sql-dr` en us-east4.
-- Bucket CMEK en el proyecto de datos (`modules/storage`). `bucket_dual_region = true` crea un dual-region
+  (null = solo prod); la réplica usa `sql-dr` en us-east4.
+- Bucket CMEK en el proyecto de datos (`modules/storage`). `bucket_dual_region` (null = solo prod) en `true` crea un dual-region
   US-CENTRAL1 + US-EAST4 con turbo replication y la llave `storage-us` (ADR 0002-d); si no, regional con `storage`.
   `app_workload` recibe `roles/storage.objectUser`.
 - MIG e2-micro en el proyecto de app con la SA `vm` (`modules/compute-mig`). El firewall de la VPC debe permitir los

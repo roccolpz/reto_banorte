@@ -71,6 +71,12 @@ variable "perimeter_name" {
   type        = string
 }
 
+variable "add_to_perimeter" {
+  description = "true: este módulo agrega app y datos al perímetro (solo prod, cuya SA tiene policyEditor). false: los agrega 2-security (dev, qa; ADR 0007-f)."
+  type        = bool
+  default     = true
+}
+
 variable "vpc_sc_enforce" {
   description = "false agrega los proyectos al spec dry-run del perímetro; true al status aplicado. Debe coincidir con vpc_sc_enforce de 2-security."
   type        = bool
@@ -92,8 +98,9 @@ variable "deployer_roles" {
       "roles/monitoring.metricsScopesAdmin",
       "roles/logging.configWriter",
     ]
+    # data entra al metrics scope de app: el link exige monitoring.metricsScopes.link en ambos proyectos.
     data = [
-      "roles/monitoring.viewer",
+      "roles/monitoring.metricsScopesAdmin",
     ]
   }
 }

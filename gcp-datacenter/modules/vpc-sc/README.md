@@ -13,7 +13,7 @@ permite a esas identidades todos los servicios y recursos (ingreso desde cualqui
 ## Proyectos miembro y `ignore_changes`
 
 El perímetro ignora cambios en `status[0].resources` y `spec[0].resources`. `member_projects` solo se usa al crear
-el perímetro. Los proyectos se agregan después desde otra raíz (4-projects):
+el perímetro. Los proyectos se agregan después desde otra raíz (4-projects en prod, 2-security en dev y qa; ADR 0007-f):
 
 | Modo | Recurso |
 |---|---|

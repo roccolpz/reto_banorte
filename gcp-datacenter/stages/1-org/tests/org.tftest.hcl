@@ -136,8 +136,16 @@ run "org_policies_y_firewall_jerarquico" {
   }
 
   assert {
-    condition     = contains(keys(google_project_iam_member.this), "5-workloads-dev|project|net_hub|roles/monitoring.viewer")
+    condition     = contains(keys(google_project_iam_member.this), "5-workloads-dev|project|net_hub|roles/monitoring.metricsScopesAdmin")
     error_message = "La SA de 5-workloads-<env> agrega net_hub a su metrics scope."
+  }
+
+  assert {
+    condition = (
+      contains(keys(google_organization_iam_member.this), "4-projects-prod|org|org|roles/accesscontextmanager.policyEditor") &&
+      length([for k in keys(google_organization_iam_member.this) : k if strcontains(k, "accesscontextmanager.policyEditor") && !startswith(k, "4-projects-prod|")]) == 0
+    )
+    error_message = "Solo 4-projects-prod edita perímetros: la política de acceso guarda también el de prod (ADR 0007-f)."
   }
 
   assert {
@@ -170,8 +178,9 @@ run "grupos_y_dominios_cuando_se_configuran" {
 
   variables {
     groups = {
-      org_admins = "gcp-org-admins@example.com"
-      auditors   = "gcp-auditors@example.com"
+      org_admins     = "gcp-org-admins@example.com"
+      billing_admins = "gcp-billing-admins@example.com"
+      auditors       = "gcp-auditors@example.com"
     }
     allowed_policy_member_customer_ids = ["C00000000"]
     audit_retention_locked             = true
@@ -180,6 +189,16 @@ run "grupos_y_dominios_cuando_se_configuran" {
   assert {
     condition     = contains(keys(local.group_bindings), "org_admins|org|org|roles/resourcemanager.organizationAdmin")
     error_message = "gcp-org-admins administra la organización."
+  }
+
+  assert {
+    condition     = length([for k, b in local.iam_bindings : k if b.scope == "billing"]) == 0
+    error_message = "La SA de 1-org solo tiene billing.user: el rol billing.admin del grupo se otorga a mano."
+  }
+
+  assert {
+    condition     = contains(keys(local.group_bindings), "billing_admins|org|org|roles/billing.viewer")
+    error_message = "gcp-billing-admins ve la facturación desde la organización."
   }
 
   assert {

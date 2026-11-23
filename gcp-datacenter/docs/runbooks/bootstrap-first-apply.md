@@ -81,10 +81,23 @@ terraform output -json stage_service_accounts |
 
 Crea los environments `dev`, `qa` y `prod` (ver `docs/README.md`, sección Environments).
 
-## 4. Resto de etapas
+## 4. Rol de administración de facturación (a mano)
+
+Terraform no otorga `roles/billing.admin`: la SA de 1-org solo tiene `billing.user`. Una persona con
+`billing.admin` en la cuenta lo concede al grupo `gcp-billing-admins` en la consola
+(Billing > Account management > Add principal) o con:
+
+```bash
+gcloud billing accounts add-iam-policy-binding <BILLING_ACCOUNT> \
+  --member="group:gcp-billing-admins@<dominio>" --role="roles/billing.admin"
+```
+
+## 5. Resto de etapas
 
 Opción A, por el pipeline: ejecuta el workflow `apply` con "Run workflow" (aplica todas las raíces en orden).
 Aprueba los jobs de prod cuando lleguen; las etapas comunes también corren en `prod`.
+Al terminar, vuelve a ejecutarlo (o solo 2-security) para que 2-security agregue los proyectos de dev y qa a sus
+perímetros (ADR 0007-f).
 
 Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 `terraform init -backend-config="bucket=$BUCKET"` y `terraform apply` en cada raíz:
@@ -95,10 +108,25 @@ Opción B, a mano (si el pipeline todavía no está listo), en este orden, con
 4. `3-networks/envs/dev`, `4-projects/envs/dev`, `5-workloads/envs/dev`
 5. lo mismo para `qa`
 6. lo mismo para `prod`
+7. `2-security` otra vez: agrega los proyectos de app y datos de dev y qa a sus perímetros (ADR 0007-f).
 
 Cada raíz de etapa ≥1 recibe `state_bucket` (`export TF_VAR_state_bucket=$BUCKET`).
 
-## 5. Comprobar
+### Entrega real: bloquear la retención de auditoría
+
+`audit_retention_locked` queda en `false` por default para que los entornos de prueba se puedan destruir, y el
+workflow `apply` no la pasa. En la entrega real, aplica `1-org` a mano una vez con el bloqueo:
+
+```bash
+export TF_VAR_audit_retention_locked=true
+terraform -chdir=stages/1-org apply
+```
+
+Es irreversible: el bucket de auditoría no se puede borrar ni acortar su retención hasta que venza (contrato §8).
+Las corridas posteriores del pipeline con `false` no lo desbloquean, pero `plan` muestra la diferencia; deja la
+variable en `true` también en `stages/1-org/terraform.tfvars` de la entrega.
+
+## 6. Comprobar
 
 - Un segundo `plan` en cada raíz dice `No changes.`
 - `tests/e2e/connectivity.sh` pasa contra prod.

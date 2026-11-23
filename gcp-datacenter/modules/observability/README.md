@@ -6,8 +6,8 @@ HTTPS y una métrica basada en logs.
 
 Las alertas solo ven métricas de los proyectos del metrics scope de `project_id`. Por eso `monitored_project_ids`
 agrega, por ejemplo, el proyecto de datos (Cloud SQL) y el del hub (túneles VPN). Quien aplica el módulo necesita
-`roles/monitoring.metricsScopesAdmin` en `project_id` y `roles/monitoring.viewer` (o superior) en cada proyecto
-monitoreado.
+`monitoring.metricsScopes.link` en `project_id` y en cada proyecto monitoreado: `roles/monitoring.metricsScopesAdmin` en ambos
+(viewer y editor no lo incluyen).
 
 ## Uso
 

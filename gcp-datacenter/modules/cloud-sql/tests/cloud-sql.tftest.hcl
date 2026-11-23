@@ -45,6 +45,11 @@ run "primaria_privada_cifrada_y_con_pitr" {
   }
 
   assert {
+    condition     = google_sql_database_instance.primary.settings[0].edition == "ENTERPRISE"
+    error_message = "La primaria debe ser edición ENTERPRISE (Enterprise Plus no acepta tiers db-custom)."
+  }
+
+  assert {
     condition     = google_sql_database_instance.primary.settings[0].availability_type == "ZONAL"
     error_message = "Sin HA la instancia es zonal."
   }
@@ -67,6 +72,11 @@ run "prod_con_ha_y_replica_dr" {
   assert {
     condition     = google_sql_database_instance.primary.settings[0].availability_type == "REGIONAL"
     error_message = "Con HA la instancia es regional."
+  }
+
+  assert {
+    condition     = google_sql_database_instance.replica[0].settings[0].edition == "ENTERPRISE"
+    error_message = "La réplica DR debe ser edición ENTERPRISE (Enterprise Plus no acepta tiers db-custom)."
   }
 
   assert {

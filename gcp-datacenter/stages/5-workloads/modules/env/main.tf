@@ -1,7 +1,11 @@
 locals {
-  name_app  = "${var.prefix}-${var.env}-app"
-  name_data = "${var.prefix}-${var.env}-data"
-  region    = "us-central1"
+  # Sin valor explícito, prod usa HA, réplica DR y bucket dual-region: el pipeline no pasa tfvars.
+  sql_ha             = coalesce(var.sql_ha, var.env == "prod")
+  enable_dr_replica  = coalesce(var.enable_dr_replica, var.env == "prod")
+  bucket_dual_region = coalesce(var.bucket_dual_region, var.env == "prod")
+  name_app           = "${var.prefix}-${var.env}-app"
+  name_data          = "${var.prefix}-${var.env}-data"
+  region             = "us-central1"
 
   # Contrato §5.
   master_cidrs = {
@@ -60,8 +64,8 @@ module "sql" {
   region              = local.region
   network             = var.network_self_link
   kms_key_name        = var.kms_keys["sql"]
-  ha                  = var.sql_ha
-  enable_dr_replica   = var.enable_dr_replica
+  ha                  = local.sql_ha
+  enable_dr_replica   = local.enable_dr_replica
   dr_kms_key_name     = lookup(var.kms_keys, "sql-dr", null)
   deletion_protection = var.deletion_protection
   labels              = var.labels
@@ -74,10 +78,10 @@ module "storage" {
 
   name              = "${var.data_project_id}-app"
   project_id        = var.data_project_id
-  location          = var.bucket_dual_region ? "US" : "US-CENTRAL1"
-  dual_region       = var.bucket_dual_region ? ["US-CENTRAL1", "US-EAST4"] : []
-  turbo_replication = var.bucket_dual_region
-  kms_key_name      = var.bucket_dual_region ? var.kms_keys["storage-us"] : var.kms_keys["storage"]
+  location          = local.bucket_dual_region ? "US" : "US-CENTRAL1"
+  dual_region       = local.bucket_dual_region ? ["US-CENTRAL1", "US-EAST4"] : []
+  turbo_replication = local.bucket_dual_region
+  kms_key_name      = local.bucket_dual_region ? var.kms_keys["storage-us"] : var.kms_keys["storage"]
   force_destroy     = !var.deletion_protection
   labels            = var.labels
 }

@@ -133,8 +133,8 @@ Nombres exactos; los consumidores dependen de ellos.
 - `secret_ids` (map(map(string))): `[env][nombre]` → id del secreto (contenedor sin versión)
 - `access_policy_name` (string, número)
 - `perimeter_names` (map(string)): `dev`, `qa`, `prod` → `accessPolicies/<n>/servicePerimeters/<nombre>`
-- Los perímetros ignoran cambios en sus listas de recursos (`lifecycle.ignore_changes`); 4-projects agrega los proyectos de app y datos.
-- Los proyectos `net-host` no entran a los perímetros VPC-SC: solo los de app y datos, que agrega 4-projects.
+- Los perímetros ignoran cambios en sus listas de recursos (`lifecycle.ignore_changes`). Los proyectos de app y datos de prod los agrega 4-projects-prod; los de dev y qa, 2-security leyendo `4-projects/<env>` (ADR 0007-f).
+- Los proyectos `net-host` no entran a los perímetros VPC-SC: solo los de app y datos.
 
 **3-networks/hub**
 - `hub_project_id`, `hub_network_id`, `hub_network_self_link`, `ncc_hub_id` (strings)
@@ -165,9 +165,9 @@ Nombres exactos; los consumidores dependen de ellos.
 
 ## 8. Recursos irreversibles o caros (defaults seguros)
 
-- Retención bloqueada del bucket de auditoría: `var.audit_retention_locked`, default `false`; el ejemplo de prod lo pone `true`. Bloquear es irreversible.
+- Retención bloqueada del bucket de auditoría: `var.audit_retention_locked`, default `false`. En la entrega real se aplica 1-org con `TF_VAR_audit_retention_locked=true` (`docs/runbooks/bootstrap-first-apply.md`). Bloquear es irreversible.
 - VPC-SC: `var.vpc_sc_enforce`, default `false` (dry-run) para no romper el pipeline; ingreso explícito para las SA de las etapas.
-- Cloud SQL: HA y réplica DR (`var.sql_ha`, `var.enable_dr_replica`) en `false` por default; `true` en el ejemplo de prod.
+- Cloud SQL: HA y réplica DR (`var.sql_ha`, `var.enable_dr_replica`) y bucket dual-region (`var.bucket_dual_region`) con default `null`: `true` en prod, `false` en dev/qa, para que el pipeline sin tfvars no despliegue prod sin ellos.
 - GKE: zonal en dev/qa, regional en prod (`var.regional`). Máquinas pequeñas por default.
 - `deletion_protection` configurable; default `false` en dev/qa para que `terraform destroy` en dev limpie todo.
 - Llaves KMS no se borran en GCP: los nombres de keyring llevan `suffix`.
