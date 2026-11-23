@@ -47,7 +47,7 @@ variable "psa_cidr" {
   default     = null
 
   validation {
-    condition = var.psa_cidr == null ? true : try(cidrhost("${cidrhost(var.psa_cidr, 0)}/${min(16, split("/", var.psa_cidr)[1])}", 0) != cidrhost("192.168.0.0/${min(16, split("/", var.psa_cidr)[1])}", 0), false)
+    condition     = var.psa_cidr == null ? true : try(cidrhost("${cidrhost(var.psa_cidr, 0)}/${min(16, split("/", var.psa_cidr)[1])}", 0) != cidrhost("192.168.0.0/${min(16, split("/", var.psa_cidr)[1])}", 0), false)
     error_message = "psa_cidr debe ser un CIDR válido que no se solape con 192.168.0.0/16."
   }
 }

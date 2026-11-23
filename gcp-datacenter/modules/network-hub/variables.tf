@@ -24,7 +24,7 @@ variable "subnets" {
 
   validation {
     # Dos CIDR se solapan si coinciden al prefijo más corto; try() da false si el CIDR no es válido.
-    condition = alltrue([for c in values(var.subnets) : try(cidrhost("${cidrhost(c, 0)}/${min(16, split("/", c)[1])}", 0) != cidrhost("192.168.0.0/${min(16, split("/", c)[1])}", 0), false)])
+    condition     = alltrue([for c in values(var.subnets) : try(cidrhost("${cidrhost(c, 0)}/${min(16, split("/", c)[1])}", 0) != cidrhost("192.168.0.0/${min(16, split("/", c)[1])}", 0), false)])
     error_message = "Cada subred debe ser un CIDR válido que no se solape con 192.168.0.0/16."
   }
 }
