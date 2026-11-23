@@ -25,8 +25,9 @@ Como la SA de plan no puede escribir el lock, el pipeline ejecuta `terraform pla
 
 ## Impersonación desde GitHub
 
-- SA `*-prod`: solo desde jobs con `environment: prod` (`attribute.environment == "prod"`).
-- Resto: cualquier job del repositorio autorizado (el proveedor ya rechaza otros repositorios con `attribute_condition`).
+- SA `*-prod`, `1-org`, `2-security` y `3-networks-hub`: solo desde jobs con `environment: prod`
+  (`attribute.environment == "prod"`).
+- Resto, incluida `plan`: cualquier job del repositorio autorizado (el proveedor ya rechaza otros repositorios con `attribute_condition`).
 
 ## Permisos de organización que otorga esta etapa
 

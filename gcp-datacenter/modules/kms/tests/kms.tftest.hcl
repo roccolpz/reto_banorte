@@ -93,3 +93,16 @@ run "region_invalida_falla" {
 
   expect_failures = [var.location]
 }
+
+run "acepta_multi_region_us" {
+  command = plan
+
+  variables {
+    location = "us"
+  }
+
+  assert {
+    condition     = google_kms_key_ring.this.location == "us"
+    error_message = "El keyring acepta la multi-región us (llave de un bucket dual-region, ADR 0002-d)."
+  }
+}

@@ -4,12 +4,12 @@ variable "project_id" {
 }
 
 variable "location" {
-  description = "Región del keyring, p. ej. us-central1 o us-east4."
+  description = "Región del keyring, p. ej. us-central1 o us-east4, o la multi-región us (CMEK de buckets dual-region)."
   type        = string
 
   validation {
-    condition     = can(regex("^[a-z]+-[a-z]+[0-9]+$", var.location))
-    error_message = "location debe ser una región de GCP, p. ej. us-central1."
+    condition     = can(regex("^([a-z]+-[a-z]+[0-9]+|us)$", var.location))
+    error_message = "location debe ser una región de GCP, p. ej. us-central1, o la multi-región us."
   }
 }
 

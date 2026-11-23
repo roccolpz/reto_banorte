@@ -45,13 +45,13 @@ module "network_prod" {
 }
 
 module "gke_prod" {
-  source                 = "../../modules/gke"
-  cluster_name           = "prod-basiquito-gke"
-  project_id             = module.project_host_prod.project_id
-  region                 = var.primary_region
-  network                = module.network_prod.network_id
-  subnetwork             = module.network_prod.subnet_id
-  master_ipv4_cidr_block = "172.16.100.0/28"
+  source                     = "../../modules/gke"
+  cluster_name               = "prod-basiquito-gke"
+  project_id                 = module.project_host_prod.project_id
+  region                     = var.primary_region
+  network                    = module.network_prod.network_id
+  subnetwork                 = module.network_prod.subnet_id
+  master_ipv4_cidr_block     = "172.16.100.0/28"
   master_authorized_networks = var.master_authorized_networks
   node_pools = {
     default = { machine_type = "e2-micro", min_count = 1, max_count = 1 }
@@ -90,13 +90,13 @@ module "network_dev" {
 }
 
 module "gke_dev" {
-  source                 = "../../modules/gke"
-  cluster_name           = "dev-basiquito-gke"
-  project_id             = module.project_host_dev.project_id
-  region                 = var.primary_region
-  network                = module.network_dev.network_id
-  subnetwork             = module.network_dev.subnet_id
-  master_ipv4_cidr_block = "172.16.110.0/28"
+  source                     = "../../modules/gke"
+  cluster_name               = "dev-basiquito-gke"
+  project_id                 = module.project_host_dev.project_id
+  region                     = var.primary_region
+  network                    = module.network_dev.network_id
+  subnetwork                 = module.network_dev.subnet_id
+  master_ipv4_cidr_block     = "172.16.110.0/28"
   master_authorized_networks = var.master_authorized_networks
   node_pools = {
     default = { machine_type = "e2-micro", min_count = 1, max_count = 1 }
@@ -126,13 +126,13 @@ module "network_test" {
 }
 
 module "gke_test" {
-  source                 = "../../modules/gke"
-  cluster_name           = "test-basiquito-gke"
-  project_id             = module.project_host_test.project_id
-  region                 = var.primary_region
-  network                = module.network_test.network_id
-  subnetwork             = module.network_test.subnet_id
-  master_ipv4_cidr_block = "172.16.120.0/28"
+  source                     = "../../modules/gke"
+  cluster_name               = "test-basiquito-gke"
+  project_id                 = module.project_host_test.project_id
+  region                     = var.primary_region
+  network                    = module.network_test.network_id
+  subnetwork                 = module.network_test.subnet_id
+  master_ipv4_cidr_block     = "172.16.120.0/28"
   master_authorized_networks = var.master_authorized_networks
   node_pools = {
     default = { machine_type = "e2-micro", min_count = 1, max_count = 1 }

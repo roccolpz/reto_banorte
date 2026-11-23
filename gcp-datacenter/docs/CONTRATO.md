@@ -129,11 +129,12 @@ Nombres exactos; los consumidores dependen de ellos.
 - `audit_log_bucket` (string)
 
 **2-security**
-- `kms_keys` (map(map(string))): `[env][purpose]` → id de llave; `purpose` ∈ `storage`, `sql`, `gke`; regiones: llaves us-central1; prod además `sql-dr` en us-east4
+- `kms_keys` (map(map(string))): `[env][purpose]` → id de llave; `purpose` ∈ `storage`, `sql`, `gke`; regiones: llaves us-central1; prod además `sql-dr` en us-east4 y `storage-us` en la multi-región us (ADR 0002-d)
 - `secret_ids` (map(map(string))): `[env][nombre]` → id del secreto (contenedor sin versión)
 - `access_policy_name` (string, número)
 - `perimeter_names` (map(string)): `dev`, `qa`, `prod` → `accessPolicies/<n>/servicePerimeters/<nombre>`
 - Los perímetros ignoran cambios en sus listas de recursos (`lifecycle.ignore_changes`); 4-projects agrega los proyectos de app y datos.
+- Los proyectos `net-host` no entran a los perímetros VPC-SC: solo los de app y datos, que agrega 4-projects.
 
 **3-networks/hub**
 - `hub_project_id`, `hub_network_id`, `hub_network_self_link`, `ncc_hub_id` (strings)
@@ -154,7 +155,8 @@ Nombres exactos; los consumidores dependen de ellos.
 ## 7. Identidad y CI
 
 - Repositorio GitHub: `roccolpz/reto_banorte` (privado). WIF acepta solo ese repositorio (`attribute_condition`).
-- Las SA `*-prod` solo se pueden impersonar desde el environment `prod` de GitHub (`attribute.environment`).
+- Las SA `*-prod` y las de `1-org`, `2-security` y `3-networks-hub` solo se pueden impersonar desde el environment `prod`
+  de GitHub (`attribute.environment`). La SA `plan` no tiene esa restricción (plan de PR y drift).
 - Sin llaves JSON. Sin secretos en código ni en `.tfvars`.
 - Valores no secretos por raíz en `terraform.tfvars.example` (el `.gitignore` excluye `*.tfvars`).
   En CI llegan como `TF_VAR_*` desde variables de GitHub: `TF_VAR_org_id`, `TF_VAR_billing_account`, `TF_VAR_state_bucket`, `TF_VAR_suffix`.

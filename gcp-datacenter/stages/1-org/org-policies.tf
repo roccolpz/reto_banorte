@@ -47,7 +47,8 @@ resource "google_org_policy_policy" "resource_locations" {
   spec {
     rules {
       values {
-        allowed_values = ["in:us-central1-locations", "in:us-east4-locations"]
+        # us/US: código del bucket dual-region y del keyring de su llave CMEK (ADR 0002-d); no abre todo in:us-locations.
+        allowed_values = ["in:us-central1-locations", "in:us-east4-locations", "us", "US"]
       }
     }
   }

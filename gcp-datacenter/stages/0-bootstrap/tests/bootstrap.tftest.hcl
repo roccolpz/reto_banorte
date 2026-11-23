@@ -36,6 +36,19 @@ run "crea_una_sa_por_etapa_y_limita_prod_al_environment_prod" {
   }
 
   assert {
+    condition = alltrue([
+      for k in ["1-org", "2-security", "3-networks-hub"] :
+      endswith(google_service_account_iam_member.wif[k].member, "/attribute.environment/prod")
+    ])
+    error_message = "Las SA de etapas comunes (1-org, 2-security, 3-networks-hub) solo se impersonan desde el environment prod."
+  }
+
+  assert {
+    condition     = endswith(google_service_account_iam_member.wif["plan"].member, "/attribute.repository/roccolpz/reto_banorte")
+    error_message = "La SA de plan se impersona desde cualquier job del repositorio (plan de PR y drift)."
+  }
+
+  assert {
     condition     = endswith(google_service_account_iam_member.wif["5-workloads-dev"].member, "/attribute.repository/roccolpz/reto_banorte")
     error_message = "Las SA que no son de prod se impersonan desde el repositorio autorizado."
   }

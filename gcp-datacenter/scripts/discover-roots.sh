@@ -4,7 +4,8 @@
 # Uso (rutas relativas a la raíz del repositorio):
 #   discover-roots.sh roots              todas las raíces de etapa (dirs con versions.tf bajo stages/)
 #   discover-roots.sh changed < files    raíces afectadas por la lista de archivos cambiados (stdin)
-#   discover-roots.sh modules            módulos y raíces de etapa con carpeta tests/ (destinos de terraform test)
+#   discover-roots.sh modules            módulos (globales y de etapa, stages/*/modules/*) y raíces de etapa con
+#                                        carpeta tests/ (destinos de terraform test)
 # Agrega --json como segundo argumento para recibir un arreglo JSON (para matrices de GitHub Actions).
 #
 # Reglas de "changed":
@@ -55,6 +56,7 @@ changed_roots() {
 modules_with_tests() {
   {
     find "$MODULES" -mindepth 2 -maxdepth 2 -type d -name tests -exec dirname {} \;
+    find "$STAGES" -mindepth 4 -maxdepth 4 -type d -path '*/modules/*/tests' -exec dirname {} \;
     all_roots | while IFS= read -r r; do if [ -d "$r/tests" ]; then printf '%s\n' "$r"; fi; done
   } | sort -u
 }

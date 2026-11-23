@@ -15,8 +15,9 @@ da acceso hasta que alguien la revoque a mano. La especificación prohíbe llave
 - La condición del proveedor acepta solo el repositorio `roccolpz/reto_banorte`.
 - Cada etapa y entorno tiene su propia SA (salida `stage_service_accounts`), y una SA `plan` de solo lectura para los
   pull requests y la detección de drift.
-- Las SA `*-prod` solo se pueden impersonar con un token cuyo `environment` sea `prod`. Los jobs de prod corren en el
-  environment `prod` de GitHub, que exige dos aprobaciones.
+- Las SA `*-prod` y las de `1-org`, `2-security` y `3-networks-hub` solo se pueden impersonar con un token cuyo
+  `environment` sea `prod`: las etapas comunes cambian recursos de los que depende prod. Esos jobs corren en el
+  environment `prod` de GitHub, que exige dos aprobaciones. La SA `plan` se impersona desde cualquier job del repositorio.
 - Los workflows usan `google-github-actions/auth` con `workload_identity_provider` y `service_account` tomados de
   variables de GitHub (no secretos: no son credenciales). Los workflows piden `id-token: write` solo en los jobs que
   se autentican.

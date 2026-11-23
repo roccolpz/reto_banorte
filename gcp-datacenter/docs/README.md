@@ -23,9 +23,9 @@ Diagrama: [diagrams/cicd.md](diagrams/cicd.md).
 | Orden | Raíz | Estado (prefijo) | Environment | SA (variable) |
 |-------|------|------------------|-------------|---------------|
 | 0 | `stages/0-bootstrap` | `0-bootstrap` | (manual, admin) | (admin) |
-| 1 | `stages/1-org` | `1-org` | `common` | `TF_SA_1_ORG` |
-| 2 | `stages/2-security` | `2-security` | `common` | `TF_SA_2_SECURITY` |
-| 3 | `stages/3-networks/hub` | `3-networks/hub` | `common` | `TF_SA_3_NETWORKS_HUB` |
+| 1 | `stages/1-org` | `1-org` | `prod` | `TF_SA_1_ORG` |
+| 2 | `stages/2-security` | `2-security` | `prod` | `TF_SA_2_SECURITY` |
+| 3 | `stages/3-networks/hub` | `3-networks/hub` | `prod` | `TF_SA_3_NETWORKS_HUB` |
 | 3 | `stages/3-networks/envs/<env>` | `3-networks/<env>` | `<env>` | `TF_SA_3_NETWORKS_<ENV>` |
 | 4 | `stages/4-projects/envs/<env>` | `4-projects/<env>` | `<env>` | `TF_SA_4_PROJECTS_<ENV>` |
 | 5 | `stages/5-workloads/envs/<env>` | `5-workloads/<env>` | `<env>` | `TF_SA_5_WORKLOADS_<ENV>` |
@@ -49,6 +49,8 @@ credencial). Los valores salen de `0-bootstrap` ([bootstrap-first-apply](runbook
 | `TF_VAR_ORG_ID` | ID de la organización → `TF_VAR_org_id` |
 | `TF_VAR_BILLING_ACCOUNT` | Cuenta de facturación → `TF_VAR_billing_account` |
 | `TF_VAR_SUFFIX` | Sufijo de 4 caracteres hex → `TF_VAR_suffix` |
+| `TF_LABELS_JSON` | Etiquetas base en JSON, p. ej. `{"app":"landing-zone","owner":"platform","cost_center":"infra"}` → `TF_VAR_labels`. Obligatoria para 1-org (sin default); vacía, las demás raíces usan su default |
+| `NOTIFICATION_EMAIL` | Correo del canal de alertas → `TF_VAR_notification_email` (obligatoria en 5-workloads) |
 
 GitHub guarda los nombres de variable en mayúsculas; los workflows los pasan a Terraform con el nombre en minúsculas.
 No se usan llaves JSON ni tokens personales (ADR 0004-e).
@@ -59,15 +61,15 @@ Settings > Environments:
 
 | Environment | Protección |
 |-------------|------------|
-| `common` | Rama de despliegue: solo `main` |
 | `dev` | Rama de despliegue: solo `main` |
 | `qa` | Rama de despliegue: solo `main` |
 | `prod` | Rama de despliegue: solo `main`; **Required reviewers: 2** (equipos de plataforma y seguridad); "Prevent self-review" activado |
 
-Las SA `*-prod` solo aceptan tokens emitidos para el environment `prod` (condición de WIF en `0-bootstrap`): un job
-fuera de ese environment no puede impersonarlas aunque tenga la variable.
+Las SA `*-prod` y las de las etapas comunes (`1-org`, `2-security`, `3-networks-hub`) solo aceptan tokens emitidos
+para el environment `prod` (condición de WIF en `0-bootstrap`): un job fuera de ese environment no puede impersonarlas
+aunque tenga la variable. Por eso esas tres raíces corren en `prod` y esperan las dos aprobaciones.
 
-Cada job de prod (red, proyectos, cargas) pide aprobación por separado. Para aprobar una sola vez por release, se
+Cada job de prod (comunes, red, proyectos, cargas) pide aprobación por separado. Para aprobar una sola vez por release, se
 puede agregar un job de "puerta" en `prod` del que dependan los tres; hoy no existe.
 
 ## Protección de `main`

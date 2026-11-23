@@ -93,8 +93,8 @@ run "org_policies_y_firewall_jerarquico" {
   }
 
   assert {
-    condition     = toset(google_org_policy_policy.resource_locations.spec[0].rules[0].values[0].allowed_values) == toset(["in:us-central1-locations", "in:us-east4-locations"])
-    error_message = "Solo se permiten us-central1 y us-east4."
+    condition     = toset(google_org_policy_policy.resource_locations.spec[0].rules[0].values[0].allowed_values) == toset(["in:us-central1-locations", "in:us-east4-locations", "us", "US"])
+    error_message = "Solo se permiten us-central1, us-east4 y la multi-región us (bucket dual-region y su llave, ADR 0002-d)."
   }
 
   assert {
@@ -120,6 +120,24 @@ run "org_policies_y_firewall_jerarquico" {
   assert {
     condition     = google_folder_iam_member.this["5-workloads-prod|folder|prod|roles/container.admin"].member == "serviceAccount:sa-tf-5-wl-prod@acme-bootstrap-seed-a1b2.iam.gserviceaccount.com"
     error_message = "La SA de 5-workloads-prod administra GKE solo en la carpeta prod."
+  }
+
+  assert {
+    condition     = contains(keys(google_project_iam_member.this), "3-networks-hub|project|net_hub|roles/networkconnectivity.hubAdmin")
+    error_message = "La SA de 3-networks-hub crea el hub de NCC y su grupo edge."
+  }
+
+  assert {
+    condition = alltrue([for k in [
+      "3-networks-prod|project|net-host-prod|roles/networkconnectivity.spokeAdmin",
+      "3-networks-prod|project|net_hub|roles/networkconnectivity.groupUser",
+    ] : contains(keys(google_project_iam_member.this), k)])
+    error_message = "La SA de 3-networks-<env> crea su spoke en net-host y lo une al grupo edge del hub."
+  }
+
+  assert {
+    condition     = contains(keys(google_project_iam_member.this), "5-workloads-dev|project|net_hub|roles/monitoring.viewer")
+    error_message = "La SA de 5-workloads-<env> agrega net_hub a su metrics scope."
   }
 
   assert {

@@ -14,12 +14,14 @@ locals {
   stage_sas           = data.terraform_remote_state.bootstrap.outputs.stage_service_accounts
   labels              = merge(var.labels, { managed_by = "terraform" })
 
-  # Un keyring por entorno en us-central1; prod suma un keyring DR en us-east4 para la réplica de Cloud SQL.
+  # Un keyring por entorno en us-central1; prod suma un keyring DR en us-east4 para la réplica de Cloud SQL
+  # y uno en la multi-región us para el bucket dual-region (ADR 0002-d).
   keyrings = {
     dev     = { env = "dev", location = "us-central1", keys = ["storage", "sql", "gke"] }
     qa      = { env = "qa", location = "us-central1", keys = ["storage", "sql", "gke"] }
     prod    = { env = "prod", location = "us-central1", keys = ["storage", "sql", "gke"] }
     prod-dr = { env = "prod", location = "us-east4", keys = ["sql-dr"] }
+    prod-us = { env = "prod", location = "us", keys = ["storage-us"] }
   }
 
   access_policy_name = var.create_access_policy ? google_access_context_manager_access_policy.this[0].name : var.access_policy_name
@@ -43,6 +45,16 @@ module "kms" {
   keyring_name = "${var.prefix}-${each.key}-keyring-${var.suffix}"
   keys         = { for k in each.value.keys : k => {} }
   labels       = merge(local.labels, { env = each.value.env })
+}
+
+# 4-projects-<env> concede cryptoKeyEncrypterDecrypter a los agentes de sus proyectos. cloudkms.admin es el único rol
+# predefinido con cryptoKeys.setIamPolicy; se otorga por keyring del entorno, no en el proyecto, para que dev no toque prod.
+resource "google_kms_key_ring_iam_member" "stage_4_projects" {
+  for_each = local.keyrings
+
+  key_ring_id = module.kms[each.key].keyring_id
+  role        = "roles/cloudkms.admin"
+  member      = "serviceAccount:${local.stage_sas["4-projects-${each.value.env}"]}"
 }
 
 # --- Secret Manager: solo contenedores; los valores se cargan fuera de Terraform ---

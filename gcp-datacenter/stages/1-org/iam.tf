@@ -84,6 +84,7 @@ locals {
         { scope = "project", key = "net_hub", role = "roles/compute.securityAdmin" },
         { scope = "project", key = "net_hub", role = "roles/dns.admin" },
         { scope = "project", key = "net_hub", role = "roles/serviceusage.serviceUsageAdmin" },
+        { scope = "project", key = "net_hub", role = "roles/networkconnectivity.hubAdmin" },
       ]
     },
     {
@@ -95,6 +96,9 @@ locals {
         { scope = "project", key = "net-host-${e}", role = "roles/servicenetworking.networksAdmin" },
         { scope = "project", key = "net-host-${e}", role = "roles/serviceusage.serviceUsageAdmin" },
         { scope = "project", key = "net_hub", role = "roles/dns.peer" },
+        { scope = "project", key = "net-host-${e}", role = "roles/networkconnectivity.spokeAdmin" },
+        # Unir el spoke al grupo edge del hub (networkconnectivity.groups.use).
+        { scope = "project", key = "net_hub", role = "roles/networkconnectivity.groupUser" },
       ]
     },
     {
@@ -103,8 +107,10 @@ locals {
         { scope = "folder", key = e, role = "roles/resourcemanager.projectIamAdmin" },
         { scope = "folder", key = e, role = "roles/serviceusage.serviceUsageAdmin" },
         { scope = "folder", key = e, role = "roles/iam.serviceAccountAdmin" },
+        # xpnAdmin incluye compute.subnetworks.setIamPolicy: cubre el adjunto a Shared VPC y el IAM de subredes del host.
         { scope = "folder", key = e, role = "roles/compute.xpnAdmin" },
         { scope = "org", key = "org", role = "roles/accesscontextmanager.policyEditor" },
+        # cloudkms.admin sobre las llaves lo concede 2-security por keyring del entorno, no aquí sobre todo el proyecto.
       ]
     },
     {
@@ -116,6 +122,8 @@ locals {
         { scope = "folder", key = e, role = "roles/iam.serviceAccountUser" },
         { scope = "folder", key = e, role = "roles/compute.networkUser" },
         { scope = "folder", key = e, role = "roles/monitoring.editor" },
+        # Agregar net_hub al metrics scope del proyecto de app exige leer su monitoreo.
+        { scope = "project", key = "net_hub", role = "roles/monitoring.viewer" },
       ]
     },
   )

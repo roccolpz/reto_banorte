@@ -13,7 +13,8 @@ IAM y el sink de auditoría. Corre con la SA `sa-tf-1-org` creada por `0-bootstr
   - `compute.vmExternalIpAccess`: denegada para todas las VM.
   - `iam.disableServiceAccountKeyCreation`, `compute.requireShieldedVm`,
     `storage.publicAccessPrevention`, `sql.restrictPublicIp`, `compute.skipDefaultNetworkCreation`.
-  - `gcp.resourceLocations`: `in:us-central1-locations` e `in:us-east4-locations`.
+  - `gcp.resourceLocations`: `in:us-central1-locations`, `in:us-east4-locations` y la multi-región
+    `us`/`US` (bucket dual-region de prod y su llave CMEK, ADR 0002-d).
   - `iam.allowedPolicyMemberDomains`: solo si `allowed_policy_member_customer_ids` no está vacío.
 - Firewall jerárquico asociado a la organización: permite IAP (`35.235.240.0/20`, tcp 22 y 3389)
   y health checks (`35.191.0.0/16`, `130.211.0.0/22`); el resto pasa (`goto_next`) a las reglas de cada VPC.
@@ -39,9 +40,8 @@ El proveedor factura las cuotas al proyecto semilla (`billing_project` con `user
 
 - `audit_retention_locked = true` es irreversible: el bucket no se puede borrar ni acortar su
   retención hasta que venza. Dejarlo en `false` mientras el entorno sea de prueba.
-- `gcp.resourceLocations` solo permite los grupos de us-central1 y us-east4. Un bucket
-  dual-region o multi-region (por ejemplo `US`) quedará bloqueado; si se necesita, agregar
-  el valor correspondiente a la política.
+- `gcp.resourceLocations` permite los grupos de us-central1 y us-east4 más el valor `us`/`US`
+  (no todo `in:us-locations`). Cualquier otra multi-región o región queda bloqueada.
 - Los nombres de rol de `iam.tf` no se verificaron contra la API (no hay credenciales en el
   equipo de construcción); el primer `plan` real los valida.
 

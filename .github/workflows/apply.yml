@@ -1,7 +1,8 @@
 # Apply al hacer merge a main, en orden de etapas 1 -> 5 y por entorno: comunes -> dev -> qa -> prod.
 # 0-bootstrap no se aplica aquí: lo ejecuta un administrador (runbook bootstrap-first-apply.md).
-# dev y qa se aplican solos; cada job de prod espera la aprobación del environment "prod"
-# (dos revisores obligatorios, configurado en Settings > Environments > prod).
+# dev y qa se aplican solos; cada job de prod y de las etapas comunes (1-org, 2-security, 3-networks/hub) espera la
+# aprobación del environment "prod" (dos revisores obligatorios, configurado en Settings > Environments > prod):
+# sus SA solo se impersonan desde ese environment.
 # Solo se aplican las raíces afectadas por el push; workflow_dispatch aplica todas.
 name: apply
 
@@ -54,21 +55,21 @@ jobs:
     needs: detect
     uses: ./.github/workflows/_tf-apply.yml
     permissions: { contents: read, id-token: write }
-    with: { root: gcp-datacenter/stages/1-org, environment: common, roots: "${{ needs.detect.outputs.roots }}" }
+    with: { root: gcp-datacenter/stages/1-org, environment: prod, roots: "${{ needs.detect.outputs.roots }}" }
 
   security:
     needs: [detect, org]
     if: ${{ !cancelled() && !failure() }}
     uses: ./.github/workflows/_tf-apply.yml
     permissions: { contents: read, id-token: write }
-    with: { root: gcp-datacenter/stages/2-security, environment: common, roots: "${{ needs.detect.outputs.roots }}" }
+    with: { root: gcp-datacenter/stages/2-security, environment: prod, roots: "${{ needs.detect.outputs.roots }}" }
 
   net-hub:
     needs: [detect, security]
     if: ${{ !cancelled() && !failure() }}
     uses: ./.github/workflows/_tf-apply.yml
     permissions: { contents: read, id-token: write }
-    with: { root: gcp-datacenter/stages/3-networks/hub, environment: common, roots: "${{ needs.detect.outputs.roots }}" }
+    with: { root: gcp-datacenter/stages/3-networks/hub, environment: prod, roots: "${{ needs.detect.outputs.roots }}" }
 
   # ---- dev ----
   net-dev:

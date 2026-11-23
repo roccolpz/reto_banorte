@@ -1,6 +1,6 @@
 # ADR 0002-d: Llave KMS para el bucket dual-region de prod
 
-- Estado: propuesta (requiere un cambio en 2-security)
+- Estado: aceptada (2-security publica `storage-us`; 1-org permite `us` y `US`)
 - Fecha: 2026-11-23
 
 ## Contexto

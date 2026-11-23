@@ -15,7 +15,8 @@ flowchart TD
   comment --> review["Revisión de CODEOWNERS<br/>y checks en verde"]
   review --> merge["Merge a main"]
 
-  merge --> common["Comunes (environment common)<br/>1-org → 2-security → 3-networks/hub"]
+  merge --> cgate{"environment prod<br/>2 aprobaciones"}
+  cgate --> common["Comunes<br/>1-org → 2-security → 3-networks/hub"]
   common --> devc["dev (automático)<br/>3-networks → 4-projects → 5-workloads"]
   devc --> qac["qa (automático)<br/>3-networks → 4-projects → 5-workloads"]
   qac --> gate{"environment prod<br/>2 aprobaciones"}
