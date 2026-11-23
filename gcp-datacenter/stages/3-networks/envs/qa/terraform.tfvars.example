@@ -1,0 +1,10 @@
+# Copiar a terraform.tfvars (excluido por .gitignore). En CI llegan como TF_VAR_*.
+# Requiere aplicados 1-org y 3-networks/hub en el mismo bucket.
+state_bucket = "acme-tf-state-xxxx"
+prefix       = "acme"
+
+labels = {
+  app         = "landing-zone"
+  owner       = "platform"
+  cost_center = "infra"
+}
