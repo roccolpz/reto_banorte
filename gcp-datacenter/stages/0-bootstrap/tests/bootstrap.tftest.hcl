@@ -88,8 +88,61 @@ run "bucket_de_estado_cifrado_y_escritura_por_prefijo" {
   }
 
   assert {
-    condition     = contains(keys(google_storage_bucket_iam_member.state_reader), "plan")
-    error_message = "La SA de plan lee todo el estado."
+    condition     = contains(keys(google_storage_bucket_iam_member.state_reader), "plan") && length(google_storage_bucket_iam_member.state_reader["plan"].condition) == 0
+    error_message = "La SA de plan lee todo el estado (ADR 0008-g)."
+  }
+}
+
+run "cada_etapa_lee_solo_los_estados_que_consume" {
+  command = apply
+
+  assert {
+    condition = (
+      strcontains(google_storage_bucket_iam_member.state_reader["5-workloads-dev"].condition[0].expression, "/objects/4-projects/dev/\")") &&
+      strcontains(google_storage_bucket_iam_member.state_reader["5-workloads-dev"].condition[0].expression, "/objects/3-networks/hub/\")") &&
+      !strcontains(google_storage_bucket_iam_member.state_reader["5-workloads-dev"].condition[0].expression, "/objects/4-projects/prod/") &&
+      !strcontains(google_storage_bucket_iam_member.state_reader["5-workloads-dev"].condition[0].expression, "/objects/0-bootstrap/")
+    )
+    error_message = "5-workloads-dev lee solo los estados de su entorno y de las etapas comunes que consume (R4)."
+  }
+
+  assert {
+    condition = alltrue([
+      for e in ["dev", "qa", "prod"] :
+      strcontains(google_storage_bucket_iam_member.state_reader["2-security"].condition[0].expression, "/objects/4-projects/${e}/\")")
+    ])
+    error_message = "2-security lee el estado de 4-projects de los tres entornos (proyectos, accesores y egreso)."
+  }
+
+  assert {
+    condition = (
+      strcontains(google_storage_bucket_iam_member.state_reader["1-org"].condition[0].expression, "/objects/0-bootstrap/\")") &&
+      !strcontains(google_storage_bucket_iam_member.state_reader["1-org"].condition[0].expression, "/objects/2-security/")
+    )
+    error_message = "1-org solo lee el estado de 0-bootstrap."
+  }
+
+  assert {
+    condition     = alltrue([for k, m in google_storage_bucket_iam_member.state_reader : strcontains(m.condition[0].expression, "resource.type == \"storage.googleapis.com/Bucket\"") if k != "plan"])
+    error_message = "Las etapas pueden listar el bucket (backend gcs y listado de 2-security), pero solo leen objetos de sus prefijos."
+  }
+}
+
+run "seed_y_roles_para_scc_y_roles_a_medida" {
+  command = apply
+
+  assert {
+    condition     = contains(local.seed_apis, "pubsub.googleapis.com") && contains(local.seed_apis, "securitycenter.googleapis.com")
+    error_message = "1-org crea notificaciones de SCC y su tópico facturando a la semilla."
+  }
+
+  assert {
+    condition = (
+      contains(keys(google_organization_iam_member.stage), "1-org|roles/securitycenter.notificationConfigEditor") &&
+      contains(keys(google_organization_iam_member.stage), "1-org|roles/iam.organizationRoleAdmin") &&
+      contains(keys(google_organization_iam_member.stage), "plan|roles/securitycenter.notificationConfigViewer")
+    )
+    error_message = "1-org administra notificaciones de SCC y roles a medida; plan los lee."
   }
 }
 

@@ -18,8 +18,11 @@ Crea:
 
 | SA | Lectura | Escritura |
 |---|---|---|
-| `plan` | todo el bucket | ninguna |
-| cada etapa | todo el bucket (lee salidas de etapas previas con `terraform_remote_state`) | solo `<prefijo de su etapa>/` (condición IAM sobre `resource.name`) |
+| `plan` | todo el bucket (ADR 0008-g) | ninguna |
+| cada etapa | lista el bucket y lee solo los prefijos que consume con `terraform_remote_state` (`local.state_read_prefixes`) | solo `<prefijo de su etapa>/` (condición IAM sobre `resource.name`) |
+
+Una etapa que empiece a leer un estado nuevo necesita su prefijo en `local.state_read_prefixes` y una corrida
+de 0-bootstrap antes de su primer plan.
 
 Como la SA de plan no puede escribir el lock, el pipeline ejecuta `terraform plan -lock=false`.
 
@@ -33,8 +36,8 @@ Como la SA de plan no puede escribir el lock, el pipeline ejecuta `terraform pla
 
 Solo los que se necesitan antes de que exista 1-org:
 
-- `sa-tf-1-org`: administración de organización, carpetas, creación de proyectos, org policies, firewall jerárquico, sinks.
-- `sa-tf-plan`: lectura de organización, IAM, org policies y Access Context Manager.
+- `sa-tf-1-org`: administración de organización, carpetas, creación de proyectos, org policies, firewall jerárquico, sinks, roles a medida y notificaciones de SCC.
+- `sa-tf-plan`: lectura de organización, IAM, org policies, Access Context Manager y notificaciones de SCC.
 - `roles/billing.user` en la cuenta de facturación para `sa-tf-1-org` y `sa-tf-4-proj-*` (crean proyectos).
 - `roles/serviceusage.serviceUsageConsumer` en la semilla para todas (se usa como `billing_project`).
 
