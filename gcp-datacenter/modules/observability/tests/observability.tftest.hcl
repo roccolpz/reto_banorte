@@ -10,7 +10,7 @@ variables {
   }
 }
 
-run "canal_y_tres_alertas_por_defecto" {
+run "canal_alertas_y_tablero_por_defecto" {
   command = plan
 
   assert {
@@ -24,8 +24,28 @@ run "canal_y_tres_alertas_por_defecto" {
   }
 
   assert {
-    condition     = toset(keys(google_monitoring_alert_policy.this)) == toset(["gke_node_cpu", "sql_cpu", "vpn_tunnel_down"])
-    error_message = "Por defecto se crean las alertas de CPU de nodos GKE, CPU de Cloud SQL y túnel VPN caído."
+    condition     = toset(keys(google_monitoring_alert_policy.this)) == toset(["gke_node_cpu", "sql_cpu", "sql_replica_lag", "vpn_tunnel_down"])
+    error_message = "Por defecto se crean las alertas de CPU de nodos GKE, CPU de Cloud SQL, retraso de réplica y túnel VPN caído."
+  }
+
+  assert {
+    condition     = strcontains(google_monitoring_alert_policy.this["sql_replica_lag"].conditions[0].condition_threshold[0].filter, "cloudsql.googleapis.com/database/replication/replica_lag")
+    error_message = "La alerta de réplica usa la métrica replica_lag."
+  }
+
+  assert {
+    condition     = google_monitoring_alert_policy.this["sql_replica_lag"].conditions[0].condition_threshold[0].threshold_value == 60
+    error_message = "La alerta de réplica salta con más de 60 s de retraso por defecto."
+  }
+
+  assert {
+    condition     = jsondecode(google_monitoring_dashboard.this.dashboard_json).displayName == "acme-dev landing zone"
+    error_message = "Se crea un tablero con el prefijo del entorno."
+  }
+
+  assert {
+    condition     = length(jsondecode(google_monitoring_dashboard.this.dashboard_json).gridLayout.widgets) == 4
+    error_message = "El tablero tiene una gráfica por alerta activa."
   }
 
   assert {
@@ -48,8 +68,9 @@ run "uptime_y_metrica_de_logs_opcionales" {
   command = plan
 
   variables {
-    enable_vpn_alert  = false
-    uptime_check_host = "app.example.com"
+    enable_vpn_alert         = false
+    enable_replica_lag_alert = false
+    uptime_check_host        = "app.example.com"
     log_metric = {
       name   = "acme-dev-iam-changes"
       filter = "protoPayload.methodName=\"SetIamPolicy\""
@@ -59,6 +80,16 @@ run "uptime_y_metrica_de_logs_opcionales" {
   assert {
     condition     = !contains(keys(google_monitoring_alert_policy.this), "vpn_tunnel_down")
     error_message = "enable_vpn_alert = false quita la alerta de VPN."
+  }
+
+  assert {
+    condition     = !contains(keys(google_monitoring_alert_policy.this), "sql_replica_lag")
+    error_message = "enable_replica_lag_alert = false quita la alerta de réplica."
+  }
+
+  assert {
+    condition     = length(jsondecode(google_monitoring_dashboard.this.dashboard_json).gridLayout.widgets) == 2
+    error_message = "El tablero solo grafica las alertas activas."
   }
 
   assert {

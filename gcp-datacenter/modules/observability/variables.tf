@@ -36,6 +36,23 @@ variable "enable_sql_alert" {
   default     = true
 }
 
+variable "enable_replica_lag_alert" {
+  description = "Crea la alerta de retraso de la réplica de Cloud SQL (solo tiene datos donde hay réplica)."
+  type        = bool
+  default     = true
+}
+
+variable "replica_lag_threshold_seconds" {
+  description = "Segundos de retraso de la réplica de Cloud SQL que disparan la alerta."
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = var.replica_lag_threshold_seconds > 0
+    error_message = "replica_lag_threshold_seconds debe ser mayor que 0."
+  }
+}
+
 variable "enable_vpn_alert" {
   description = "Crea la alerta de túnel VPN caído."
   type        = bool
