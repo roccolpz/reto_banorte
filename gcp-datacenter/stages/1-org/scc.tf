@@ -4,7 +4,7 @@
 # agente de servicio, por eso la SA de 1-org necesita setIamPolicy en el tópico (la tiene como creadora del proyecto).
 
 resource "google_pubsub_topic" "scc_findings" {
-  project = module.common_project["security"].project_id
+  project = local.common_project_ids["security"]
   name    = "${var.prefix}-scc-findings"
   labels  = merge(local.labels, { env = "common" })
 
@@ -14,7 +14,7 @@ resource "google_pubsub_topic" "scc_findings" {
 }
 
 resource "google_pubsub_subscription" "scc_findings" {
-  project = module.common_project["security"].project_id
+  project = local.common_project_ids["security"]
   name    = "${var.prefix}-scc-findings"
   topic   = google_pubsub_topic.scc_findings.id
   labels  = merge(local.labels, { env = "common" })

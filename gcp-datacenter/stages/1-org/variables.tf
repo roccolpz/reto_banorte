@@ -100,3 +100,9 @@ variable "audit_retention_locked" {
   type        = bool
   default     = false
 }
+
+variable "compact_projects" {
+  description = "Modo de prueba con poca cuota de facturación: un proyecto common y un proyecto por entorno (red, app y datos juntos). false es el diseño completo."
+  type        = bool
+  default     = false
+}

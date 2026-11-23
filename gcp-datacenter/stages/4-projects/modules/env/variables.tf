@@ -108,3 +108,9 @@ variable "labels" {
     error_message = "labels debe incluir env, app, owner, cost_center y managed_by."
   }
 }
+
+variable "single_project" {
+  description = "true: app y datos usan host_project_id (compact_projects de 1-org); no se crean proyectos."
+  type        = bool
+  default     = false
+}

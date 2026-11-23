@@ -1,21 +1,21 @@
 output "app_project_id" {
   description = "ID del proyecto de aplicación."
-  value       = module.app.project_id
+  value       = local.app_project_id
 }
 
 output "app_project_number" {
   description = "Número del proyecto de aplicación."
-  value       = module.app.project_number
+  value       = local.app_number
 }
 
 output "data_project_id" {
   description = "ID del proyecto de datos."
-  value       = module.data.project_id
+  value       = local.data_project_id
 }
 
 output "data_project_number" {
   description = "Número del proyecto de datos."
-  value       = module.data.project_number
+  value       = local.data_number
 }
 
 output "service_accounts" {

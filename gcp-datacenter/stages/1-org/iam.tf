@@ -8,7 +8,7 @@ locals {
   stage_sas = data.terraform_remote_state.bootstrap.outputs.stage_service_accounts
 
   project_ids = merge(
-    { for k, p in module.common_project : k => p.project_id },
+    local.common_project_ids,
     { for e, p in module.net_host_project : "net-host-${e}" => p.project_id },
   )
 

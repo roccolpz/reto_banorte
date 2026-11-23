@@ -32,7 +32,8 @@ locals {
   vm_tags  = { (var.secure_tag_key) = var.secure_tag_values["vm"] }
 
   # Solo prod vigila los túneles VPN del hub: una alerta por túnel y no una por entorno (P13).
-  monitored_project_ids = concat([var.data_project_id], var.env == "prod" ? [var.hub_project_id] : [])
+  # Sin el propio proyecto de app: con compact_projects (1-org) app y datos son el mismo proyecto.
+  monitored_project_ids = [for p in concat([var.data_project_id], var.env == "prod" ? [var.hub_project_id] : []) : p if p != var.app_project_id]
 }
 
 # --- GKE privado en el proyecto de app ---

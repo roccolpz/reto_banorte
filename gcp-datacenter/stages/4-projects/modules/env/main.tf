@@ -1,9 +1,18 @@
-locals {
-  app_project_id  = "${var.prefix}-${var.env}-app-${var.suffix}"
-  data_project_id = "${var.prefix}-${var.env}-data-${var.suffix}"
+# single_project (compact_projects de 1-org): app y datos viven en el proyecto del entorno (host_project_id);
+# no se crean proyectos ni se adjuntan a la Shared VPC.
+data "google_project" "host" {
+  count      = var.single_project ? 1 : 0
+  project_id = var.host_project_id
+}
 
-  app_number = module.app.project_number
-  gke_robot  = "serviceAccount:service-${local.app_number}@container-engine-robot.iam.gserviceaccount.com"
+locals {
+  app_project_id  = var.single_project ? var.host_project_id : module.app[0].project_id
+  data_project_id = var.single_project ? var.host_project_id : module.data[0].project_id
+
+  app_number  = var.single_project ? data.google_project.host[0].number : module.app[0].project_number
+  data_number = var.single_project ? data.google_project.host[0].number : module.data[0].project_number
+
+  gke_robot = "serviceAccount:service-${local.app_number}@container-engine-robot.iam.gserviceaccount.com"
   # Agente de Google APIs: crea las VM de los MIG en la subred compartida.
   cloudservices = "serviceAccount:${local.app_number}@cloudservices.gserviceaccount.com"
 }
@@ -12,9 +21,10 @@ locals {
 
 module "app" {
   source = "../../../../modules/project-factory"
+  count  = var.single_project ? 0 : 1
 
   name                       = "${var.prefix} ${var.env} app"
-  project_id                 = local.app_project_id
+  project_id                 = "${var.prefix}-${var.env}-app-${var.suffix}"
   folder_id                  = var.folder_id
   billing_account            = var.billing_account
   shared_vpc_host_project_id = var.host_project_id
@@ -31,9 +41,10 @@ module "app" {
 
 module "data" {
   source = "../../../../modules/project-factory"
+  count  = var.single_project ? 0 : 1
 
   name                       = "${var.prefix} ${var.env} data"
-  project_id                 = local.data_project_id
+  project_id                 = "${var.prefix}-${var.env}-data-${var.suffix}"
   folder_id                  = var.folder_id
   billing_account            = var.billing_account
   shared_vpc_host_project_id = var.host_project_id
@@ -102,15 +113,15 @@ locals {
   }
 
   domain_projects = {
-    app  = module.app.project_id
-    data = module.data.project_id
+    app  = local.app_project_id
+    data = local.data_project_id
   }
 }
 
 resource "google_service_account" "workloads" {
   for_each = local.workload_sas
 
-  project      = module.app.project_id
+  project      = local.app_project_id
   account_id   = each.value.account_id
   display_name = each.value.display_name
 }
@@ -132,7 +143,7 @@ resource "google_project_iam_member" "workload_roles" {
 # --- CMEK: agentes de servicio sobre las llaves del entorno ---
 
 data "google_storage_project_service_account" "data" {
-  project = module.data.project_id
+  project = local.data_project_id
 
   depends_on = [module.data]
 }
@@ -140,7 +151,7 @@ data "google_storage_project_service_account" "data" {
 resource "google_project_service_identity" "sql" {
   provider = google-beta
 
-  project = module.data.project_id
+  project = local.data_project_id
   service = "sqladmin.googleapis.com"
 
   depends_on = [module.data]
@@ -167,10 +178,12 @@ resource "google_kms_crypto_key_iam_member" "service_agents" {
 # --- VPC-SC: app y datos dentro del perímetro del entorno ---
 
 locals {
-  perimeter_projects = var.add_to_perimeter ? {
-    app  = "projects/${module.app.project_number}"
-    data = "projects/${module.data.project_number}"
-  } : {}
+  perimeter_projects = var.add_to_perimeter ? (var.single_project ? {
+    app = "projects/${local.app_number}"
+    } : {
+    app  = "projects/${local.app_number}"
+    data = "projects/${local.data_number}"
+  }) : {}
 }
 
 resource "google_access_context_manager_service_perimeter_dry_run_resource" "projects" {

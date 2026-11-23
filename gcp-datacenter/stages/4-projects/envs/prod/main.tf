@@ -37,6 +37,7 @@ module "env" {
   billing_account = var.billing_account
   folder_id       = data.terraform_remote_state.org.outputs.folder_ids[local.env]
   host_project_id = data.terraform_remote_state.network.outputs.host_project_id
+  single_project  = try(data.terraform_remote_state.org.outputs.compact_projects, false)
   subnets         = data.terraform_remote_state.network.outputs.subnets
   kms_keys        = data.terraform_remote_state.security.outputs.kms_keys[local.env]
   perimeter_name  = data.terraform_remote_state.security.outputs.perimeter_names[local.env]

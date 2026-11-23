@@ -142,10 +142,12 @@ data "terraform_remote_state" "projects" {
 }
 
 locals {
+  # Con compact_projects (1-org) app y datos son el mismo proyecto: se agrega una sola vez, como app.
   env_perimeter_projects = merge([
     for e, s in data.terraform_remote_state.projects : {
       for d in ["app", "data"] : "${e}/${d}" => { env = e, resource = "projects/${s.outputs["${d}_project_number"]}" }
-      if contains(local.delegated_envs, e) && try(s.outputs["${d}_project_number"], null) != null
+      if contains(local.delegated_envs, e) && try(s.outputs["${d}_project_number"], null) != null &&
+      !(d == "data" && try(s.outputs["data_project_number"], null) == try(s.outputs["app_project_number"], null))
     }
   ]...)
 

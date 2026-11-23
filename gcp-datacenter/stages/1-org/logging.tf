@@ -1,7 +1,7 @@
 # Sink agregado de auditoría de toda la organización hacia un bucket con retención.
 
 resource "google_storage_bucket" "audit" {
-  project                     = module.common_project["logging"].project_id
+  project                     = local.common_project_ids["logging"]
   name                        = "${var.prefix}-common-logging-audit-${var.suffix}"
   location                    = var.region
   uniform_bucket_level_access = true
