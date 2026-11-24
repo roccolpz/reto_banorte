@@ -33,7 +33,24 @@ module "project_host_prod" {
   project_id      = "acme-host-prod-${var.suffix}"
   folder_id       = var.prod_folder_id
   billing_account = var.billing_account
-  activate_apis   = ["compute.googleapis.com", "container.googleapis.com"]
+  activate_apis   = ["compute.googleapis.com", "container.googleapis.com", "iam.googleapis.com"]
+}
+
+# Separación de funciones en Prod: QA aprueba (solo lectura), una cuenta de servicio despliega.
+module "access_prod" {
+  source              = "../../modules/env-access"
+  environment         = "prod"
+  project_id          = module.project_host_prod.project_id
+  project_number      = module.project_host_prod.project_number
+  deployer_account_id = "sa-prod-deployer"
+  approvers_group     = var.qa_approvers_group
+
+  shared_vpc_folder_id       = var.prod_folder_id
+  grant_access_policy_editor = true
+  access_policy_name         = google_access_context_manager_access_policy.main.name
+
+  # Espera a que las APIs (incl. Compute, que crea la SA de los nodos) estén habilitadas
+  depends_on = [module.project_host_prod]
 }
 
 module "network_prod" {

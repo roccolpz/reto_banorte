@@ -20,3 +20,13 @@ variable "master_authorized_networks" {
   }))
   default = []
 }
+
+variable "qa_approvers_group" {
+  description = "Correo del Google Group con los usuarios de QA autorizados a aprobar pases a Prod (ej. qa-prod-approvers@tu-dominio.com)"
+  type        = string
+}
+
+output "prod_deployer_email" {
+  description = "Cuenta de servicio que desplegará a Prod desde el pipeline"
+  value       = module.access_prod.deployer_email
+}
