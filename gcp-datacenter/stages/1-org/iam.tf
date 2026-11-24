@@ -104,6 +104,8 @@ locals {
         { scope = "project", key = "net_hub", role = "roles/dns.admin" },
         { scope = "project", key = "net_hub", role = "roles/serviceusage.serviceUsageAdmin" },
         { scope = "project", key = "net_hub", role = "roles/networkconnectivity.hubAdmin" },
+        # VM servidor de onprem-sim (ADR 0005-e), sin cuenta de servicio.
+        { scope = "project", key = "net_hub", role = "roles/compute.instanceAdmin.v1" },
       ]
     },
     {

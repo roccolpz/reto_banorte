@@ -27,6 +27,12 @@ política de acceso (solo puede haber una por organización).
 - 2-security: si `policies list` devuelve una política, `create_access_policy = false` y su número en
   `access_policy_name`; si no hay, `create_access_policy = true` y `org_id`.
 - `groups` vacío en 1-org si los grupos no existen todavía: no se crean bindings humanos.
+- Si la cuenta de facturación solo admite pocos proyectos ligados (las cuentas de prueba suelen tener 5),
+  `compact_projects = true` en 1-org: un proyecto common y un proyecto por entorno que también aloja app y datos
+  (semilla + common + dev + qa + prod = 5). Se pierde la separación red/app/datos dentro del entorno; el resto
+  del diseño no cambia. 4-projects lo lee del estado de 1-org.
+- Correr cada etapa desde 2-security como su SA (`GOOGLE_IMPERSONATE_SERVICE_ACCOUNT=sa-tf-<etapa>@<semilla>`),
+  con `roles/iam.serviceAccountTokenCreator` en la semilla para quien aplica. 0-bootstrap y 1-org van como usuario.
 - Aplicar a mano (opción B de `bootstrap-first-apply.md`), no por el pipeline: los errores se ven y se
   reintentan más rápido. El pipeline se prueba después, con la landing zone ya creada.
 - Desplegar dev completo primero. qa y prod solo cuando dev quede sin errores: prod es lo más caro (GKE DR en

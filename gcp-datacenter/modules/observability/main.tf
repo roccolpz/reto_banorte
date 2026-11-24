@@ -83,13 +83,15 @@ resource "google_monitoring_dashboard" "this" {
   project = var.project_id
   dashboard_json = jsonencode({
     displayName = "${var.name_prefix} landing zone"
+    # Escrito como lo devuelve la API (columns en texto, targetAxis explícito) para que el plan no muestre cambios.
     gridLayout = {
-      columns = 2
+      columns = "2"
       widgets = [for k, a in local.enabled_alerts : {
         title = a.title
         xyChart = {
           dataSets = [{
-            plotType = "LINE"
+            plotType   = "LINE"
+            targetAxis = "Y1"
             timeSeriesQuery = {
               timeSeriesFilter = {
                 filter = a.filter

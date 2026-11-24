@@ -110,6 +110,39 @@ resource "google_dns_policy" "onprem_inbound" {
   }
 }
 
+# Servidor on-prem simulado (ADR 0005-e): responde ping y HTTP en la IP del registro app.corp.acme.internal.
+# Sin IP pública ni cuenta de servicio (org policies); el HTTP usa python3 de la imagen, sin salida a internet.
+resource "google_compute_instance" "onprem_server" {
+  project      = local.hub_project_id
+  name         = "${local.onprem_name}-server"
+  zone         = "us-central1-a"
+  machine_type = "e2-micro"
+  labels       = local.labels
+
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-12"
+      size  = 10
+    }
+  }
+
+  network_interface {
+    subnetwork = google_compute_subnetwork.onprem.id
+    network_ip = google_dns_record_set.onprem_test.rrdatas[0]
+  }
+
+  shielded_instance_config {
+    enable_secure_boot          = true
+    enable_vtpm                 = true
+    enable_integrity_monitoring = true
+  }
+
+  metadata = {
+    enable-oslogin = "TRUE"
+    startup-script = "mkdir -p /srv/www && echo onprem-sim > /srv/www/index.html && nohup python3 -m http.server 80 --directory /srv/www >/dev/null 2>&1 &"
+  }
+}
+
 # GCP reserva una IP DNS_RESOLVER por subred al crear la política; se lee después de crearla.
 data "google_compute_addresses" "onprem_dns" {
   project = local.hub_project_id

@@ -36,14 +36,14 @@ check() {
   fi
 }
 
-instance_url=$(gcloud compute instance-groups managed list-instances "$MIG_NAME" \
-  --project "$PROJECT_ID" --region "$REGION" --limit 1 --format 'value(instance)')
-[ -n "$instance_url" ] || {
+# basename(): gcloud recorta la URL de instance según la versión, así que no se parsea a mano.
+instance=$(gcloud compute instance-groups managed list-instances "$MIG_NAME" \
+  --project "$PROJECT_ID" --region "$REGION" --limit 1 --format 'value(instance.basename())')
+[ -n "$instance" ] || {
   echo "El MIG $MIG_NAME no tiene instancias" >&2
   exit 1
 }
-instance=${instance_url##*/}
-zone=$(sed -E 's#.*/zones/([^/]+)/.*#\1#' <<<"$instance_url")
+zone=$(gcloud compute instances list --project "$PROJECT_ID" --filter "name=$instance" --format 'value(zone.basename())')
 echo "VM de prueba: $instance ($zone)"
 
 remote() {
