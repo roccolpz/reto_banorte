@@ -77,10 +77,13 @@ locals {
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
     "logging.googleapis.com",
+    # Las etapas facturan sus llamadas a la semilla (user_project_override): 5-workloads usa Cloud SQL y Monitoring.
+    "monitoring.googleapis.com",
     "orgpolicy.googleapis.com",
     "pubsub.googleapis.com",
     "securitycenter.googleapis.com",
     "serviceusage.googleapis.com",
+    "sqladmin.googleapis.com",
     "storage.googleapis.com",
     "sts.googleapis.com",
   ]

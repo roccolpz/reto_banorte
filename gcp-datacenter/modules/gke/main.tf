@@ -24,6 +24,12 @@ resource "google_container_cluster" "primary" {
     machine_type    = "e2-micro"
     service_account = var.node_service_account
     oauth_scopes    = local.oauth_scopes
+
+    # Pool temporario (se elimina al crear el clúster), pero sus VM también pasan por compute.requireShieldedVm.
+    shielded_instance_config {
+      enable_secure_boot          = var.enable_shielded_nodes
+      enable_integrity_monitoring = var.enable_shielded_nodes
+    }
   }
 
   ip_allocation_policy {
