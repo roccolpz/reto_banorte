@@ -79,6 +79,12 @@ locals {
       title       = "Tag value IAM admin"
       permissions = ["resourcemanager.tagValues.get", "resourcemanager.tagValues.getIamPolicy", "resourcemanager.tagValues.setIamPolicy"]
     }
+    # 4-projects-prod da attestorsVerifier al agente de Binary Authorization de su proyecto de app sobre el attestor
+    # qa-approved, sin poder crearlo, cambiar su llave ni borrarlo (ADR 0022-k).
+    attestor_iam_admin = {
+      title       = "Binary Authorization attestor IAM admin"
+      permissions = ["binaryauthorization.attestors.get", "binaryauthorization.attestors.getIamPolicy", "binaryauthorization.attestors.setIamPolicy"]
+    }
   }
   # Nombre armado aquí y no leído del recurso: las llaves de for_each deben conocerse en el plan.
   custom_role_ids = { for k, _ in local.custom_roles : k => "${local.org}/roles/${k}" }
@@ -106,6 +112,16 @@ locals {
         { scope = "project", key = "security", role = "roles/cloudkms.admin" },
         { scope = "project", key = "security", role = "roles/secretmanager.admin" },
         { scope = "project", key = "security", role = "roles/serviceusage.serviceUsageAdmin" },
+        # Attestor qa-approved y su nota de Container Analysis (ADR 0022-k).
+        { scope = "project", key = "security", role = "roles/binaryauthorization.attestorsAdmin" },
+        { scope = "project", key = "security", role = "roles/containeranalysis.notes.editor" },
+      ]
+      # Firma las imágenes de prod que QA aprobó (ADR 0022-k). signerVerifier sobre la llave y attestorsViewer sobre el
+      # attestor los da 2-security sobre esos recursos. El proyecto de seguridad solo guarda la nota qa-approved y sus
+      # atestaciones.
+      "attestor-prod" = [
+        { scope = "project", key = "security", role = "roles/containeranalysis.notes.attacher" },
+        { scope = "project", key = "security", role = "roles/containeranalysis.occurrences.editor" },
       ]
       "3-networks-hub" = [
         { scope = "project", key = "net_hub", role = "roles/compute.networkAdmin" },
@@ -148,6 +164,8 @@ locals {
         # La política de acceso guarda los tres perímetros y su IAM no baja a cada perímetro: solo la SA de prod,
         # con aprobación, la edita. Los proyectos de dev y qa los agrega 2-security (ADR 0007-f).
         e == "prod" ? [{ scope = "org", key = "org", role = "roles/accesscontextmanager.policyEditor" }] : [],
+        # Política de Binary Authorization del proyecto de app: solo prod exige la atestación qa-approved (ADR 0022-k).
+        e == "prod" ? [{ scope = "folder", key = e, role = "roles/binaryauthorization.policyEditor" }] : [],
       )
     },
     {

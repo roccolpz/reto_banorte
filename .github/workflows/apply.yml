@@ -6,6 +6,8 @@
 # las exige el job qa-approval (ADR 0021-k) antes de cualquier job que use el environment prod.
 # Solo se aplican las raíces afectadas por el push; workflow_dispatch aplica todas.
 # Entre dev y qa corre tests-dev (pruebas de humo de dev): si fallan, qa y prod no se aplican.
+# Si cambia gcp-datacenter/release/prod-images.txt, attest-prod firma esas imágenes para Binary Authorization de prod,
+# también detrás de qa-approval (ADR 0022-k).
 name: apply
 
 on:
@@ -27,6 +29,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       roots: ${{ steps.discover.outputs.roots }}
+      images: ${{ steps.discover.outputs.images }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -38,11 +41,16 @@ jobs:
           BEFORE: ${{ github.event.before }}
         run: |
           d=gcp-datacenter/scripts/discover-roots.sh
+          manifest=gcp-datacenter/release/prod-images.txt
           if [ "$EVENT" = workflow_dispatch ] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
             roots=$(bash "$d" roots --json)
+            images=true
           else
             roots=$(git diff --name-only "$BEFORE" HEAD | bash "$d" changed --json)
+            if git diff --quiet "$BEFORE" HEAD -- "$manifest"; then images=false; else images=true; fi
           fi
+          echo "Imágenes de prod a firmar: $images"
+          echo "images=$images" >>"$GITHUB_OUTPUT"
           # La cadena de jobs de abajo lista las raíces del contrato; una raíz nueva debe agregarse a mano.
           known='["gcp-datacenter/stages/0-bootstrap","gcp-datacenter/stages/1-org","gcp-datacenter/stages/2-security","gcp-datacenter/stages/3-networks/hub",
             "gcp-datacenter/stages/3-networks/envs/dev","gcp-datacenter/stages/3-networks/envs/qa","gcp-datacenter/stages/3-networks/envs/prod",
@@ -65,11 +73,13 @@ jobs:
         with:
           persist-credentials: false
       - id: scope
-        name: Raíces que exigen aprobación de QA
+        name: Raíces e imágenes que exigen aprobación de QA
         env:
           ROOTS: ${{ needs.detect.outputs.roots }}
+          IMAGES: ${{ needs.detect.outputs.images }}
         run: |
-          gated=$(jq -c '[.[] | select(test("/envs/prod$") or IN("gcp-datacenter/stages/1-org", "gcp-datacenter/stages/2-security", "gcp-datacenter/stages/3-networks/hub"))]' <<<"$ROOTS")
+          gated=$(jq -c --arg images "$IMAGES" '[.[] | select(test("/envs/prod$") or IN("gcp-datacenter/stages/1-org", "gcp-datacenter/stages/2-security", "gcp-datacenter/stages/3-networks/hub"))]
+            + (if $images == "true" then ["gcp-datacenter/release/prod-images.txt"] else [] end)' <<<"$ROOTS")
           echo "Raíces de prod o comunes en este push: $gated"
           echo "gated=$gated" >>"$GITHUB_OUTPUT"
       - if: steps.scope.outputs.gated != '[]'
@@ -79,6 +89,42 @@ jobs:
           QA_APPROVERS: ${{ vars.QA_APPROVERS }}
           QA_MIN_APPROVALS: "2"
         run: bash gcp-datacenter/scripts/check-qa-approvals.sh "$GITHUB_REPOSITORY" "$GITHUB_SHA"
+
+  # Binary Authorization de prod (ADR 0022-k): firma las imágenes de release/prod-images.txt con el attestor
+  # qa-approved. Corre solo después de qa-approval y en el environment prod: la SA attestor-prod solo se impersona ahí
+  # y sobre main, y solo puede firmar con la llave del attestor.
+  attest-prod:
+    needs: [detect, qa-approval]
+    if: needs.detect.outputs.images == 'true'
+    runs-on: ubuntu-24.04
+    environment: prod
+    permissions: { contents: read, id-token: write }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verificar variables y gcloud
+        env:
+          SA: ${{ vars.TF_SA_ATTESTOR_PROD }}
+          WIF: ${{ vars.WIF_PROVIDER }}
+          ATTESTOR: ${{ vars.BINAUTHZ_ATTESTOR }}
+          KEY_VERSION: ${{ vars.BINAUTHZ_KEY_VERSION }}
+        run: |
+          [ -n "$SA" ] || { echo "::error::falta la variable TF_SA_ATTESTOR_PROD"; exit 1; }
+          [ -n "$WIF" ] || { echo "::error::falta la variable WIF_PROVIDER"; exit 1; }
+          [ -n "$ATTESTOR" ] || { echo "::error::falta la variable BINAUTHZ_ATTESTOR"; exit 1; }
+          [ -n "$KEY_VERSION" ] || { echo "::error::falta la variable BINAUTHZ_KEY_VERSION"; exit 1; }
+          command -v gcloud >/dev/null || { echo "::error::el runner no trae gcloud"; exit 1; }
+          gcloud --version | head -1
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.TF_SA_ATTESTOR_PROD }}
+      - name: Firmar imágenes aprobadas por QA
+        env:
+          BINAUTHZ_ATTESTOR: ${{ vars.BINAUTHZ_ATTESTOR }}
+          BINAUTHZ_KEY_VERSION: ${{ vars.BINAUTHZ_KEY_VERSION }}
+        run: bash gcp-datacenter/scripts/attest-images.sh sign gcp-datacenter/release/prod-images.txt
 
   org:
     needs: [detect, qa-approval]

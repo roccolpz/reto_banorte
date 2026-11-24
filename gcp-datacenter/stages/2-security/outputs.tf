@@ -30,3 +30,17 @@ output "vpc_sc_enforce" {
   description = "env → true si el perímetro está aplicado, false si está en dry-run. 4-projects lo lee para agregar sus proyectos con el recurso correcto."
   value       = var.vpc_sc_enforce
 }
+
+output "binauthz_attestor" {
+  description = "Attestor qa-approved de prod (ADR 0022-k): id (projects/<p>/attestors/<n>), project y name. 4-projects-prod lo exige en su política."
+  value = {
+    id      = google_binary_authorization_attestor.qa_approved.id
+    project = google_binary_authorization_attestor.qa_approved.project
+    name    = google_binary_authorization_attestor.qa_approved.name
+  }
+}
+
+output "binauthz_key_version" {
+  description = "Versión de la llave de firma del attestor (projects/.../cryptoKeyVersions/1). Va en la variable de GitHub BINAUTHZ_KEY_VERSION."
+  value       = "${google_kms_crypto_key.binauthz_qa.id}/cryptoKeyVersions/1"
+}

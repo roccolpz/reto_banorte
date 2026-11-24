@@ -1,4 +1,20 @@
-mock_provider "google" {}
+mock_provider "google" {
+  mock_data "google_kms_crypto_key_version" {
+    defaults = {
+      public_key = [{ pem = "-----BEGIN PUBLIC KEY-----\nMFkw\n-----END PUBLIC KEY-----\n", algorithm = "EC_SIGN_P256_SHA256" }]
+    }
+  }
+  mock_resource "google_kms_crypto_key" {
+    defaults = {
+      id = "projects/acme-common-security-ab12/locations/us-central1/keyRings/acme-prod-keyring-ab12/cryptoKeys/binauthz-qa-approved"
+    }
+  }
+  mock_resource "google_binary_authorization_attestor" {
+    defaults = {
+      id = "projects/acme-common-security-ab12/attestors/acme-prod-qa-approved"
+    }
+  }
+}
 
 override_data {
   target = data.terraform_remote_state.bootstrap
@@ -10,6 +26,7 @@ override_data {
         "4-projects-dev"  = "sa-tf-4-proj-dev@seed.iam.gserviceaccount.com"
         "4-projects-qa"   = "sa-tf-4-proj-qa@seed.iam.gserviceaccount.com"
         "4-projects-prod" = "sa-tf-4-proj-prod@seed.iam.gserviceaccount.com"
+        "attestor-prod"   = "sa-binauthz-attestor-prod@seed.iam.gserviceaccount.com"
       }
     }
   }
@@ -24,6 +41,7 @@ override_data {
       custom_role_ids = {
         kms_key_iam_admin   = "organizations/000000000000/roles/kms_key_iam_admin"
         tag_value_iam_admin = "organizations/000000000000/roles/tag_value_iam_admin"
+        attestor_iam_admin  = "organizations/000000000000/roles/attestor_iam_admin"
       }
     }
   }
@@ -216,4 +234,43 @@ run "politica_nueva_requiere_org_id" {
   }
 
   expect_failures = [var.org_id]
+}
+
+run "binary_authorization_attestor_qa_approved" {
+  command = apply
+
+  assert {
+    condition = (
+      google_kms_crypto_key.binauthz_qa.purpose == "ASYMMETRIC_SIGN" &&
+      google_kms_crypto_key.binauthz_qa.version_template[0].algorithm == "EC_SIGN_P256_SHA256"
+    )
+    error_message = "La llave del attestor es asimétrica de firma EC P-256 (ADR 0022-k)."
+  }
+
+  assert {
+    condition = (
+      google_kms_crypto_key_iam_member.binauthz_signer.role == "roles/cloudkms.signerVerifier" &&
+      google_kms_crypto_key_iam_member.binauthz_signer.member == "serviceAccount:sa-binauthz-attestor-prod@seed.iam.gserviceaccount.com" &&
+      google_kms_crypto_key_iam_member.binauthz_signer.crypto_key_id == google_kms_crypto_key.binauthz_qa.id
+    )
+    error_message = "Solo attestor-prod firma, y solo con la llave del attestor."
+  }
+
+  assert {
+    condition     = google_binary_authorization_attestor.qa_approved.attestation_authority_note[0].public_keys[0].id == "//cloudkms.googleapis.com/v1/${google_kms_crypto_key.binauthz_qa.id}/cryptoKeyVersions/1"
+    error_message = "El ID de la llave pública del attestor debe coincidir con el que usa scripts/attest-images.sh."
+  }
+
+  assert {
+    condition = (
+      google_binary_authorization_attestor_iam_member.stage_4_projects_prod.role == "organizations/000000000000/roles/attestor_iam_admin" &&
+      google_binary_authorization_attestor_iam_member.stage_4_projects_prod.member == "serviceAccount:sa-tf-4-proj-prod@seed.iam.gserviceaccount.com"
+    )
+    error_message = "4-projects-prod solo administra el IAM del attestor, con el rol a medida."
+  }
+
+  assert {
+    condition     = output.binauthz_key_version == "${google_kms_crypto_key.binauthz_qa.id}/cryptoKeyVersions/1"
+    error_message = "binauthz_key_version apunta a la versión 1 de la llave del attestor."
+  }
 }

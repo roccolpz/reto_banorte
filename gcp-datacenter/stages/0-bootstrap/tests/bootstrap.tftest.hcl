@@ -26,13 +26,27 @@ run "crea_una_sa_por_etapa_y_limita_prod_al_environment_prod" {
   command = apply
 
   assert {
-    condition     = length(output.stage_service_accounts) == 13
-    error_message = "Debe haber 13 SA: plan y una por etapa y entorno."
+    condition     = length(output.stage_service_accounts) == 14
+    error_message = "Debe haber 14 SA: plan, una por etapa y entorno, y attestor-prod."
   }
 
   assert {
     condition     = endswith(google_service_account_iam_member.wif["5-workloads-prod"].member, "/attribute.prod_main/true")
     error_message = "Las SA de prod solo se impersonan desde el environment prod de GitHub sobre main."
+  }
+
+  assert {
+    condition     = endswith(google_service_account_iam_member.wif["attestor-prod"].member, "/attribute.prod_main/true")
+    error_message = "La SA que firma imágenes de prod solo se impersona desde el environment prod sobre main (ADR 0022-k)."
+  }
+
+  assert {
+    condition = (
+      !contains(keys(google_storage_bucket_iam_member.state_reader), "attestor-prod") &&
+      !contains(keys(google_storage_bucket_iam_member.stage_writer), "attestor-prod") &&
+      !anytrue([for b in google_organization_iam_member.stage : strcontains(b.member, "sa-binauthz-attestor-prod")])
+    )
+    error_message = "attestor-prod no lee ni escribe estado y no tiene roles en la organización."
   }
 
   assert {

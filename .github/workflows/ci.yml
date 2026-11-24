@@ -133,7 +133,8 @@ jobs:
             exit 1
           fi
 
-  # Pruebas de los scripts del pipeline (p. ej. la puerta de QA, ADR 0021-k), con un gh falso: sin red ni token.
+  # Pruebas de los scripts del pipeline (puerta de QA, ADR 0021-k; firma de imágenes, ADR 0022-k) con gh y gcloud
+  # falsos, sin red ni credenciales, y formato de release/prod-images.txt.
   script-tests:
     runs-on: ubuntu-24.04
     steps:
@@ -142,6 +143,10 @@ jobs:
           persist-credentials: false
       - name: Puerta de aprobaciones de QA
         run: bash gcp-datacenter/scripts/tests/check-qa-approvals.test.sh
+      - name: Firma de imágenes de prod
+        run: bash gcp-datacenter/scripts/tests/attest-images.test.sh
+      - name: Formato de release/prod-images.txt (solo digests)
+        run: bash gcp-datacenter/scripts/attest-images.sh check gcp-datacenter/release/prod-images.txt
 
   # terraform test en cada módulo y raíz de etapa con carpeta tests/ (proveedores simulados, sin credenciales).
   module-tests:

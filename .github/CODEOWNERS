@@ -50,3 +50,5 @@
 /gcp-datacenter/stages/3-networks/envs/prod/    @acme/gcp-network-admins @acme/gcp-qa-approvers
 /gcp-datacenter/stages/4-projects/envs/prod/    @acme/gcp-devops @acme/gcp-qa-approvers
 /gcp-datacenter/stages/5-workloads/envs/prod/   @acme/gcp-devops @acme/gcp-qa-approvers
+# Manifiesto de imágenes de prod (Binary Authorization, ADR 0022-k).
+/gcp-datacenter/release/                        @acme/gcp-devops @acme/gcp-qa-approvers

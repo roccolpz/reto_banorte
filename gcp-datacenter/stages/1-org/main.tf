@@ -22,7 +22,12 @@ locals {
     }
     security = {
       domain = "security"
-      apis   = ["cloudkms.googleapis.com", "secretmanager.googleapis.com", "accesscontextmanager.googleapis.com", "securitycenter.googleapis.com", "pubsub.googleapis.com", "logging.googleapis.com"]
+      apis = [
+        "cloudkms.googleapis.com", "secretmanager.googleapis.com", "accesscontextmanager.googleapis.com", "securitycenter.googleapis.com",
+        "pubsub.googleapis.com", "logging.googleapis.com",
+        # Attestor qa-approved de Binary Authorization y su nota (ADR 0022-k).
+        "binaryauthorization.googleapis.com", "containeranalysis.googleapis.com",
+      ]
     }
     backup = {
       domain = "backup"

@@ -9,14 +9,16 @@ Cómo se configura y opera el pipeline de la landing zone. Las convenciones de c
 2. `ci.yml` corre en el PR:
    - `fmt`, `tflint`, `checkov` sobre todo `gcp-datacenter/`;
    - `policy-tests` (`conftest verify` y los planes de ejemplo);
-   - `script-tests` (pruebas de `scripts/check-qa-approvals.sh` con un `gh` falso);
+   - `script-tests` (pruebas de `check-qa-approvals.sh` y `attest-images.sh` con `gh` y `gcloud` falsos, y formato
+     de `release/prod-images.txt`);
    - `module-tests` (`terraform test` en cada módulo con `tests/`);
    - `validate` y `plan` en cada raíz afectada. El plan se pasa a JSON, se evalúa con las políticas y se publica
      como comentario del PR (uno por raíz, se actualiza en cada push).
 3. Revisión de CODEOWNERS y todos los checks en verde. Un plan que viola una política bloquea el merge.
 4. Merge a `main`: `apply.yml` aplica las raíces afectadas en orden. dev y qa solos. Si el push toca prod o una etapa
    común, `qa-approval` exige que el PR tenga 2 aprobaciones de QA (ADR 0021-k) y cada job de prod espera además la
-   aprobación del environment `prod`.
+   aprobación del environment `prod`. Si cambia `release/prod-images.txt`, `attest-prod` firma esas imágenes para
+   Binary Authorization de prod, también detrás de `qa-approval` (ADR 0022-k).
 5. `drift.yml` revisa todas las raíces cada día ([drift-response](runbooks/drift-response.md)).
 
 Diagrama: [diagrams/cicd.md](diagrams/cicd.md).
@@ -48,12 +50,15 @@ credencial). Los valores salen de `0-bootstrap` ([bootstrap-first-apply](runbook
 | `WIF_PROVIDER` | Proveedor de Workload Identity Federation (`projects/<n>/locations/global/workloadIdentityPools/<pool>/providers/<prov>`) |
 | `TF_STATE_BUCKET` | Bucket del estado; también llega a Terraform como `TF_VAR_state_bucket` |
 | `TF_SA_PLAN` | SA de solo lectura para el plan de los PR y el drift |
-| `TF_SA_1_ORG` … `TF_SA_5_WORKLOADS_PROD` | Una por llave de `stage_service_accounts` (12 en total) |
+| `TF_SA_1_ORG` … `TF_SA_5_WORKLOADS_PROD` | Una por llave de etapa de `stage_service_accounts` (12 en total) |
 | `TF_VAR_ORG_ID` | ID de la organización → `TF_VAR_org_id` |
 | `TF_VAR_BILLING_ACCOUNT` | Cuenta de facturación → `TF_VAR_billing_account` |
 | `TF_VAR_SUFFIX` | Sufijo de 4 caracteres hex → `TF_VAR_suffix` |
 | `TF_LABELS_JSON` | Etiquetas base en JSON, p. ej. `{"app":"landing-zone","owner":"platform","cost_center":"infra"}` → `TF_VAR_labels`. Obligatoria para 1-org (sin default); vacía, las demás raíces usan su default |
 | `NOTIFICATION_EMAIL` | Correo del canal de alertas → `TF_VAR_notification_email` (obligatoria en 5-workloads) |
+| `TF_SA_ATTESTOR_PROD` | SA `attestor-prod` de `stage_service_accounts`: firma las imágenes de prod (ADR 0022-k) |
+| `BINAUTHZ_ATTESTOR` | Salida `binauthz_attestor.id` de 2-security (`projects/<p>/attestors/<n>`) |
+| `BINAUTHZ_KEY_VERSION` | Salida `binauthz_key_version` de 2-security (`projects/.../cryptoKeyVersions/1`) |
 | `QA_APPROVERS` | Logins de GitHub de los aprobadores de QA, separados por coma (p. ej. `ana,beto`). Mínimo 2. Vacía, `qa-approval` bloquea todo push que toque prod (ADR 0021-k, [qa-approvers](runbooks/qa-approvers.md)) |
 
 GitHub guarda los nombres de variable en mayúsculas; los workflows los pasan a Terraform con el nombre en minúsculas.

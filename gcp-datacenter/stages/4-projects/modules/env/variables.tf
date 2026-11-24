@@ -114,3 +114,18 @@ variable "single_project" {
   type        = bool
   default     = false
 }
+
+variable "binauthz_attestor" {
+  description = "Attestor que exige la política de Binary Authorization del proyecto de app (salida binauthz_attestor de 2-security: id, project, name). Obligatorio en prod; null en dev y qa deja la política por defecto (ADR 0022-k)."
+  type = object({
+    id      = string
+    project = string
+    name    = string
+  })
+  default = null
+
+  validation {
+    condition     = var.env != "prod" || var.binauthz_attestor != null
+    error_message = "prod exige binauthz_attestor: sus imágenes deben llevar la atestación qa-approved (ADR 0022-k)."
+  }
+}

@@ -44,7 +44,27 @@ Ninguna debería ser quien normalmente abre los PR de prod: el autor del PR no c
       que WIF use `attribute.prod_main` (environment `prod` **y** rama `main`). Hasta entonces sigue la condición
       anterior (solo environment `prod`).
 
-## 3. Prueba de punta a punta
+## 3. Binary Authorization de prod (ADR 0022-k)
+
+Orden: cada paso usa lo que crea el anterior.
+
+- [ ] **(admin)** Volver a aplicar `0-bootstrap` (si no se hizo en el paso 2): crea la SA `attestor-prod`.
+- [ ] **(admin)** Variable `TF_SA_ATTESTOR_PROD` con el correo de `stage_service_accounts["attestor-prod"]`.
+- [ ] Aplicar `1-org` por PR: APIs de Binary Authorization y Container Analysis en el proyecto de seguridad, rol a
+      medida `attestor_iam_admin` y roles de `2-security`, `attestor-prod` y `4-projects-prod`.
+- [ ] Aplicar `2-security` por PR: llave `binauthz-qa-approved`, nota y attestor `qa-approved`.
+- [ ] **(admin)** Variables `BINAUTHZ_ATTESTOR` (salida `binauthz_attestor.id`) y `BINAUTHZ_KEY_VERSION` (salida
+      `binauthz_key_version`) de 2-security.
+- [ ] Aplicar `4-projects-prod` por PR: política del proyecto de app de prod.
+      ⚠️ Desde aquí, prod solo corre imágenes del manifiesto firmadas. Si ya hay cargas en prod, agregar sus
+      imágenes (por digest) a `release/prod-images.txt` **antes** de este paso.
+- [ ] Prueba: un PR que agrega una imagen por digest a `release/prod-images.txt` → 2 aprobaciones de QA → merge →
+      `attest-prod` firma → `kubectl run` con esa imagen en prod funciona; con otra imagen, el admission la rechaza.
+
+Bloquear una imagen ya firmada: quitarla del manifiesto no basta. Un miembro de `break_glass` borra la ocurrencia
+de la atestación en Container Analysis (proyecto de seguridad) o se rota la llave (ADR 0022-k).
+
+## 4. Prueba de punta a punta
 
 - [ ] Abrir un PR que cambie algo menor en una raíz de prod (p. ej. un comentario en
       `stages/5-workloads/envs/prod/main.tf`).

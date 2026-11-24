@@ -1,0 +1,10 @@
+# Imágenes de contenedor aprobadas para prod (ADR 0022-k).
+#
+# El proyecto de app de prod solo ejecuta imágenes con la atestación qa-approved de Binary Authorization. Para
+# llevar una imagen a prod, agregarla aquí en un pull request:
+#   - una por línea, fijada por digest (nunca por tag): <registro>/<ruta>@sha256:<64 hex>
+#     p. ej. us-central1-docker.pkg.dev/acme-prod-app-ab12/apps/api@sha256:<digest>
+#   - el PR necesita 2 aprobaciones de QA (puerta qa-approval, ADR 0021-k);
+#   - al fusionar, el job attest-prod de apply.yml firma cada imagen nueva con la llave del attestor.
+# Quitar una línea no revoca su atestación: para bloquear una imagen ya firmada, ver docs/runbooks/qa-approvers.md.
+# CI valida el formato en cada PR (scripts/attest-images.sh check).

@@ -26,6 +26,11 @@ variables {
   vpc_sc_enforce           = false
   secure_tag_values        = { "gke-nodes" = "tagValues/1001", vm = "tagValues/1002" }
   labels                   = { app = "landing-zone", owner = "platform", cost_center = "infra", env = "prod", managed_by = "terraform" }
+  binauthz_attestor = {
+    id      = "projects/acme-common-security-ab12/attestors/acme-prod-qa-approved"
+    project = "acme-common-security-ab12"
+    name    = "acme-prod-qa-approved"
+  }
 }
 
 run "proyectos_iam_y_perimetro_dry_run" {
@@ -139,4 +144,57 @@ run "perimetro_a_cargo_de_2_security" {
     condition     = length(google_access_context_manager_service_perimeter_resource.projects) == 0 && length(google_access_context_manager_service_perimeter_dry_run_resource.projects) == 0
     error_message = "Con add_to_perimeter = false (dev, qa) el módulo no toca el perímetro: lo hace 2-security (ADR 0007-f)."
   }
+}
+
+run "prod_exige_atestacion_qa_approved" {
+  command = plan
+
+  assert {
+    condition = (
+      google_binary_authorization_policy.this[0].project == "acme-prod-app-ab12" &&
+      google_binary_authorization_policy.this[0].default_admission_rule[0].evaluation_mode == "REQUIRE_ATTESTATION" &&
+      google_binary_authorization_policy.this[0].default_admission_rule[0].enforcement_mode == "ENFORCED_BLOCK_AND_AUDIT_LOG" &&
+      toset(google_binary_authorization_policy.this[0].default_admission_rule[0].require_attestations_by) == toset(["projects/acme-common-security-ab12/attestors/acme-prod-qa-approved"])
+    )
+    error_message = "El proyecto de app de prod bloquea toda imagen sin la atestación qa-approved (ADR 0022-k)."
+  }
+
+  assert {
+    condition     = google_binary_authorization_policy.this[0].global_policy_evaluation_mode == "ENABLE"
+    error_message = "Las imágenes de sistema de GKE se admiten sin atestación."
+  }
+
+  assert {
+    condition = (
+      google_binary_authorization_attestor_iam_member.verifier[0].role == "roles/binaryauthorization.attestorsVerifier" &&
+      google_binary_authorization_attestor_iam_member.verifier[0].attestor == "acme-prod-qa-approved" &&
+      google_binary_authorization_attestor_iam_member.verifier[0].project == "acme-common-security-ab12"
+    )
+    error_message = "Solo el agente de Binary Authorization del proyecto de app recibe attestorsVerifier, sobre el attestor qa-approved."
+  }
+}
+
+run "dev_sin_politica_de_atestacion" {
+  command = plan
+
+  variables {
+    env               = "dev"
+    binauthz_attestor = null
+    labels            = { app = "landing-zone", owner = "platform", cost_center = "infra", env = "dev", managed_by = "terraform" }
+  }
+
+  assert {
+    condition     = length(google_binary_authorization_policy.this) == 0 && length(google_binary_authorization_attestor_iam_member.verifier) == 0
+    error_message = "dev y qa no exigen atestación: la regla de QA aplica a prod."
+  }
+}
+
+run "prod_sin_attestor_falla" {
+  command = plan
+
+  variables {
+    binauthz_attestor = null
+  }
+
+  expect_failures = [var.binauthz_attestor]
 }

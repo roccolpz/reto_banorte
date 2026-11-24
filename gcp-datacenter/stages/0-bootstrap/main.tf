@@ -14,8 +14,14 @@ locals {
     { for e in local.envs : "5-workloads-${e}" => { account_id = "sa-tf-5-wl-${e}", prefix = "5-workloads/${e}" } },
   )
 
+  # SAs que no ejecutan Terraform: no leen ni escriben estado. attestor-prod firma las imágenes de prod que QA aprobó
+  # (Binary Authorization, ADR 0022-k); termina en -prod, así que WIF la limita al environment prod sobre main.
+  signer_sas = {
+    "attestor-prod" = { account_id = "sa-binauthz-attestor-prod", prefix = null }
+  }
+
   # La SA de plan solo lee: no tiene prefijo de escritura.
-  service_accounts = merge({ plan = { account_id = "sa-tf-plan", prefix = null } }, local.stage_sas)
+  service_accounts = merge({ plan = { account_id = "sa-tf-plan", prefix = null } }, local.stage_sas, local.signer_sas)
 
   # Prefijos de estado que cada etapa lee con terraform_remote_state (R4). Agregar aquí el prefijo antes de
   # leer un estado nuevo; la SA de plan lee todo el bucket (ADR 0008-g).
@@ -186,8 +192,9 @@ resource "google_service_account" "stage" {
 }
 
 # Cada etapa lista el bucket (backend gcs) y lee solo los prefijos que consume (R4); plan lee todo (ADR 0008-g).
+# Las SAs firmantes (signer_sas) no tocan el bucket de estado.
 resource "google_storage_bucket_iam_member" "state_reader" {
-  for_each = local.service_accounts
+  for_each = { for k, v in local.service_accounts : k => v if !contains(keys(local.signer_sas), k) }
 
   bucket = google_storage_bucket.state.name
   role   = "roles/storage.objectViewer"

@@ -44,8 +44,8 @@ cualquiera con escritura, y CODEOWNERS se cumple con un solo dueño.
   editarlo para que pase. La puerta en `apply.yml` corre después del merge con el código de `main`.
 - **Regla "required reviewers" por equipo de los rulesets**: necesita una organización de GitHub con equipos; el
   repositorio es personal. Puede sustituir a `qa-approval` si el repositorio pasa a una organización.
-- **Binary Authorization con dos firmantes**: cubre imágenes de contenedor, no cambios de Terraform. Queda como
-  trabajo aparte.
+- **Binary Authorization con dos firmantes**: cubre imágenes de contenedor, no cambios de Terraform. Las imágenes
+  de prod quedan cubiertas en ADR 0022-k, con la firma del pipeline detrás de esta misma puerta.
 
 ## Consecuencias
 
