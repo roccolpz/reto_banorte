@@ -30,7 +30,7 @@ resource "google_container_cluster" "primary" {
   # Pool temporal por defecto; GKE lo borra al terminar de crear el cluster.
   node_config {
     disk_size_gb    = 20
-    machine_type    = "e2-micro"
+    machine_type    = "e2-medium" # Dataplane V2 no arranca en e2-micro (sin memoria para anetd)
     service_account = var.node_service_account
     oauth_scopes    = local.oauth_scopes
 
