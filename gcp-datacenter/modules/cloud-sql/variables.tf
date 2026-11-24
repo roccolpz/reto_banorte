@@ -27,7 +27,7 @@ variable "network" {
 variable "database_version" {
   description = "Versión de PostgreSQL."
   type        = string
-  default     = "POSTGRES_16"
+  default     = "POSTGRES_18"
 
   validation {
     condition     = startswith(var.database_version, "POSTGRES_")

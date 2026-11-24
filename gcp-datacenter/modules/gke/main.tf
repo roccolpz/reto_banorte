@@ -18,6 +18,15 @@ resource "google_container_cluster" "primary" {
   enable_shielded_nodes    = var.enable_shielded_nodes
   resource_labels          = var.labels
 
+  # Dataplane V2 aplica las NetworkPolicy de Kubernetes (Cilium); el bloque network_policy queda apagado porque
+  # Calico no se usa con ADVANCED_DATAPATH. Intranode visibility manda el tráfico entre pods del mismo nodo por la
+  # VPC, para que lo vean los flow logs y las reglas de firewall.
+  datapath_provider           = "ADVANCED_DATAPATH"
+  enable_intranode_visibility = true
+  network_policy {
+    enabled = false
+  }
+
   # Pool temporal por defecto; GKE lo borra al terminar de crear el cluster.
   node_config {
     disk_size_gb    = 20
@@ -132,9 +141,11 @@ resource "google_container_node_pool" "pools" {
     }
   }
 
-  # El autoscaler mueve el número de nodos; no recrear el pool por eso.
+  # El autoscaler mueve el número de nodos; no recrear el pool por eso. Si se recrea el clúster (mismo nombre),
+  # el pool también, o Terraform conservaría en el estado un pool que ya no existe.
   lifecycle {
-    ignore_changes = [initial_node_count]
+    ignore_changes       = [initial_node_count]
+    replace_triggered_by = [google_container_cluster.primary]
   }
 }
 

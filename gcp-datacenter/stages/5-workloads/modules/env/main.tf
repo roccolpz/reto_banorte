@@ -5,6 +5,7 @@ locals {
   bucket_dual_region = coalesce(var.bucket_dual_region, var.env == "prod")
   enable_dr_cluster  = coalesce(var.enable_dr_cluster, var.env == "prod")
   name_app           = "${var.prefix}-${var.env}-app"
+  database_version   = "POSTGRES_18"
   name_data          = "${var.prefix}-${var.env}-data"
   subnet             = var.subnets[var.primary_region]
 
@@ -94,8 +95,11 @@ resource "google_service_account_iam_member" "workload_identity" {
 # --- Cloud SQL privado en el proyecto de datos ---
 
 # Cloud SQL no reutiliza un nombre hasta una semana después de borrarlo: el sufijo aleatorio permite recrear dev.
+# Cambiar la versión mayor crea instancias nuevas con otro nombre, en vez de un upgrade en sitio (no lo admite
+# con réplica entre regiones sin pasos manuales).
 resource "random_id" "sql" {
   byte_length = 2
+  keepers     = { database_version = local.database_version }
 }
 
 module "sql" {
@@ -106,6 +110,7 @@ module "sql" {
   region              = var.primary_region
   network             = var.network_self_link
   tier                = local.sql_tier
+  database_version    = local.database_version
   kms_key_name        = var.kms_keys["sql"]
   ha                  = local.sql_ha
   enable_dr_replica   = local.enable_dr_replica

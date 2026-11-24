@@ -324,3 +324,18 @@ jobs:
         run: |
           [ "$PLAN_OUTCOME" = success ] || { echo "::error::terraform plan falló en $ROOT"; exit 1; }
           [ "$POLICY_OUTCOME" = success ] || { echo "::error::el plan de $ROOT viola políticas (ver comentario del PR)"; exit 1; }
+
+  # Único check obligatorio en la protección de main: los jobs de matriz cambian de nombre según las raíces
+  # afectadas, así que se resumen aquí. Falla si algún job falló o se canceló; "skipped" cuenta como bien.
+  ci-ok:
+    if: always()
+    needs: [detect, fmt, tflint, checkov, policy-tests, module-tests, terratest-compile, validate, plan]
+    runs-on: ubuntu-24.04
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Resultados: $RESULTS"
+          for r in $RESULTS; do
+            case $r in success | skipped) ;; *) echo "::error::un job de CI terminó en $r"; exit 1 ;; esac
+          done
