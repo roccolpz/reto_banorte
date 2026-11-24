@@ -54,6 +54,8 @@ locals {
       # apply a mano) haya creado el proyecto.
       "roles/storage.admin",
       "roles/pubsub.admin",
+      # Habilita APIs en los proyectos que crea 1-org (p. ej. Binary Authorization en el proyecto de seguridad).
+      "roles/serviceusage.serviceUsageAdmin",
     ]
     plan = [
       "roles/viewer",

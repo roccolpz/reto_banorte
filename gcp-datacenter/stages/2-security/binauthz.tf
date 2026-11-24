@@ -24,9 +24,21 @@ resource "google_kms_crypto_key" "binauthz_qa" {
   }
 }
 
+# Leer la llave pública (para el attestor) pide cloudkms.cryptoKeyVersions.viewPublicKey, que no trae el rol de
+# administración de KMS. Solo sobre esta llave: la SA de 2-security (apply) y la de plan (PR y drift).
+resource "google_kms_crypto_key_iam_member" "binauthz_pubkey_viewer" {
+  for_each = toset(["2-security", "plan"])
+
+  crypto_key_id = google_kms_crypto_key.binauthz_qa.id
+  role          = "roles/cloudkms.publicKeyViewer"
+  member        = "serviceAccount:${local.stage_sas[each.key]}"
+}
+
 data "google_kms_crypto_key_version" "binauthz_qa" {
   crypto_key = google_kms_crypto_key.binauthz_qa.id
   version    = 1
+
+  depends_on = [google_kms_crypto_key_iam_member.binauthz_pubkey_viewer]
 }
 
 resource "google_kms_crypto_key_iam_member" "binauthz_signer" {
