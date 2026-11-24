@@ -6,6 +6,9 @@
 #   gcp-security-admins  etapas 1 y 2, módulos de seguridad, políticas como código
 #   gcp-network-admins   etapa 3 y módulos de red
 #   gcp-devops           etapas 4 y 5, módulos de cómputo y datos, pruebas de integración
+#   gcp-qa-approvers     se agrega como revisor de las raíces de prod (ADR 0021-k). CODEOWNERS solo pide la revisión
+#                        y basta UNA aprobación de cualquier dueño; las dos aprobaciones de QA las exige qa-approval
+#                        en apply.yml, con los logins de la variable QA_APPROVERS.
 
 # Por defecto
 *                                               @acme/gcp-org-admins
@@ -42,3 +45,10 @@
 # Pruebas
 /gcp-datacenter/test/                           @acme/gcp-devops
 /gcp-datacenter/tests/                          @acme/gcp-devops
+
+# Raíces de prod: además de su equipo, se pide revisión a QA (ADR 0021-k). Van al final porque la última línea gana.
+/gcp-datacenter/stages/3-networks/envs/prod/    @acme/gcp-network-admins @acme/gcp-qa-approvers
+/gcp-datacenter/stages/4-projects/envs/prod/    @acme/gcp-devops @acme/gcp-qa-approvers
+/gcp-datacenter/stages/5-workloads/envs/prod/   @acme/gcp-devops @acme/gcp-qa-approvers
+# Manifiesto de imágenes de prod (Binary Authorization, ADR 0022-k).
+/gcp-datacenter/release/                        @acme/gcp-devops @acme/gcp-qa-approvers

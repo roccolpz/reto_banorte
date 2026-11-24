@@ -14,8 +14,14 @@ locals {
     { for e in local.envs : "5-workloads-${e}" => { account_id = "sa-tf-5-wl-${e}", prefix = "5-workloads/${e}" } },
   )
 
+  # SAs que no ejecutan Terraform: no leen ni escriben estado. attestor-prod firma las imágenes de prod que QA aprobó
+  # (Binary Authorization, ADR 0022-k); termina en -prod, así que WIF la limita al environment prod sobre main.
+  signer_sas = {
+    "attestor-prod" = { account_id = "sa-binauthz-attestor-prod", prefix = null }
+  }
+
   # La SA de plan solo lee: no tiene prefijo de escritura.
-  service_accounts = merge({ plan = { account_id = "sa-tf-plan", prefix = null } }, local.stage_sas)
+  service_accounts = merge({ plan = { account_id = "sa-tf-plan", prefix = null } }, local.stage_sas, local.signer_sas)
 
   # Prefijos de estado que cada etapa lee con terraform_remote_state (R4). Agregar aquí el prefijo antes de
   # leer un estado nuevo; la SA de plan lee todo el bucket (ADR 0008-g).
@@ -48,6 +54,8 @@ locals {
       # apply a mano) haya creado el proyecto.
       "roles/storage.admin",
       "roles/pubsub.admin",
+      # Habilita APIs en los proyectos que crea 1-org (p. ej. Binary Authorization en el proyecto de seguridad).
+      "roles/serviceusage.serviceUsageAdmin",
     ]
     plan = [
       "roles/viewer",
@@ -70,7 +78,9 @@ locals {
 
   wif_principal_repo = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repository}"
   prod_gated_common  = ["1-org", "2-security", "3-networks-hub"]
-  wif_principal_prod = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.environment/prod"
+  # environment prod Y rama main (ADR 0021-k): la protección de rama del environment se configura en GitHub; aquí se
+  # exige también en GCP, para que un error en esa configuración no abra las SA de prod a otra rama.
+  wif_principal_prod = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.prod_main/true"
 
   # Las etapas >= 1 usan la semilla como billing_project (user_project_override),
   # así que aquí van las APIs que llaman a nivel organización.
@@ -184,8 +194,9 @@ resource "google_service_account" "stage" {
 }
 
 # Cada etapa lista el bucket (backend gcs) y lee solo los prefijos que consume (R4); plan lee todo (ADR 0008-g).
+# Las SAs firmantes (signer_sas) no tocan el bucket de estado.
 resource "google_storage_bucket_iam_member" "state_reader" {
-  for_each = local.service_accounts
+  for_each = { for k, v in local.service_accounts : k => v if !contains(keys(local.signer_sas), k) }
 
   bucket = google_storage_bucket.state.name
   role   = "roles/storage.objectViewer"
@@ -275,6 +286,8 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.actor"      = "assertion.actor"
     # El claim environment solo existe en jobs con environment de GitHub.
     "attribute.environment" = "has(assertion.environment) ? assertion.environment : \"none\""
+    # "true" solo en jobs del environment prod que corren sobre main; lo usan las SA de prod (local.wif_principal_prod).
+    "attribute.prod_main" = "has(assertion.environment) && assertion.environment == \"prod\" && assertion.ref == \"refs/heads/main\" ? \"true\" : \"false\""
   }
 
   attribute_condition = "assertion.repository == \"${var.github_repository}\""
@@ -285,7 +298,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
 }
 
 # Las SA *-prod y las de etapas comunes (1-org, 2-security, 3-networks-hub) solo se impersonan desde el environment
-# prod de GitHub: tocan recursos de los que depende prod. El resto, incluida la SA de plan, desde cualquier job del
+# prod de GitHub y sobre la rama main: tocan recursos de los que depende prod. El resto, incluida la SA de plan, desde cualquier job del
 # repositorio autorizado (attribute_condition del proveedor).
 resource "google_service_account_iam_member" "wif" {
   for_each = local.service_accounts

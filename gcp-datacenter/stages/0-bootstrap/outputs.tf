@@ -14,7 +14,7 @@ output "state_kms_key" {
 }
 
 output "stage_service_accounts" {
-  description = "Correo de la SA de cada etapa: plan, 1-org, 2-security, 3-networks-{hub,dev,qa,prod}, 4-projects-{dev,qa,prod}, 5-workloads-{dev,qa,prod}"
+  description = "Correo de la SA de cada etapa: plan, 1-org, 2-security, 3-networks-{hub,dev,qa,prod}, 4-projects-{dev,qa,prod}, 5-workloads-{dev,qa,prod}, y la firmante attestor-prod (ADR 0022-k)"
   value       = { for k, sa in google_service_account.stage : k => sa.email }
 }
 

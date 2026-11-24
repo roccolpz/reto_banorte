@@ -18,8 +18,8 @@ labels = {
 }
 
 # Sin grupos no se crean bindings humanos. Llaves válidas: org_admins, break_glass, billing_admins,
-# security_admins, network_admins, devops, developers, auditors. break_glass queda sin miembros fuera de un
-# incidente (ADR 0009-g).
+# security_admins, network_admins, devops, developers, auditors, qa_approvers. break_glass queda sin miembros fuera
+# de un incidente (ADR 0009-g). qa_approvers son los usuarios de QA que aprueban los pases a prod (ADR 0020-k).
 # groups = {
 #   org_admins = "gcp-org-admins@example.com"
 #   auditors   = "gcp-auditors@example.com"

@@ -33,6 +33,7 @@ override_data {
         "5-workloads-dev"  = "sa-tf-5-wl-dev@acme-bootstrap-seed-a1b2.iam.gserviceaccount.com"
         "5-workloads-qa"   = "sa-tf-5-wl-qa@acme-bootstrap-seed-a1b2.iam.gserviceaccount.com"
         "5-workloads-prod" = "sa-tf-5-wl-prod@acme-bootstrap-seed-a1b2.iam.gserviceaccount.com"
+        "attestor-prod"    = "sa-binauthz-attestor-prod@acme-bootstrap-seed-a1b2.iam.gserviceaccount.com"
       }
     }
   }
@@ -166,8 +167,9 @@ run "roles_a_medida_y_tags_seguros" {
     condition = output.custom_role_ids == {
       kms_key_iam_admin   = "organizations/000000000000/roles/kms_key_iam_admin"
       tag_value_iam_admin = "organizations/000000000000/roles/tag_value_iam_admin"
+      attestor_iam_admin  = "organizations/000000000000/roles/attestor_iam_admin"
     }
-    error_message = "custom_role_ids expone los dos roles a medida como organizations/<id>/roles/<nombre> (CONTRATO §6)."
+    error_message = "custom_role_ids expone los tres roles a medida como organizations/<id>/roles/<nombre> (CONTRATO §6)."
   }
 
   assert {
@@ -315,6 +317,7 @@ run "grupos_humanos_solo_leen_fuera_de_break_glass" {
       devops          = "gcp-devops@example.com"
       developers      = "gcp-developers@example.com"
       auditors        = "gcp-auditors@example.com"
+      qa_approvers    = "gcp-qa-approvers@example.com"
     }
   }
 
@@ -338,6 +341,22 @@ run "grupos_humanos_solo_leen_fuera_de_break_glass" {
     condition     = contains(keys(local.group_bindings), "security_admins|org|org|roles/securitycenter.adminViewer")
     error_message = "gcp-security-admins revisa SCC sin administrarlo."
   }
+
+  # qa_approvers: solo lectura, solo en qa y prod (ADR 0020-k).
+  assert {
+    condition     = alltrue([for k, b in local.group_bindings : b.scope == "folder" && contains(["qa", "prod"], b.key) if b.group == "qa_approvers"])
+    error_message = "gcp-qa-approvers solo recibe roles en las carpetas qa y prod (nada en dev, la organización ni proyectos)."
+  }
+
+  assert {
+    condition     = alltrue([for k, b in local.group_bindings : can(regex("^roles/(browser|[a-z]+\\.[a-zA-Z]*[Vv]iewer)$", b.role)) if b.group == "qa_approvers"])
+    error_message = "gcp-qa-approvers solo recibe roles de lectura: la aprobación ocurre en GitHub, no en GCP."
+  }
+
+  assert {
+    condition     = alltrue([for e in ["qa", "prod"] : contains(keys(local.group_bindings), "qa_approvers|folder|${e}|roles/container.clusterViewer")])
+    error_message = "gcp-qa-approvers ve los clústeres de qa y prod para verificar lo que aprueba."
+  }
 }
 
 run "falla_con_grupo_desconocido" {
@@ -348,4 +367,36 @@ run "falla_con_grupo_desconocido" {
   }
 
   expect_failures = [var.groups]
+}
+
+run "binary_authorization_minimo_privilegio" {
+  command = plan
+
+  # La SA firmante solo recibe roles en el proyecto de seguridad, y ninguno de administración (ADR 0022-k).
+  assert {
+    condition = toset([for k, b in local.stage_sa_bindings : b.role if startswith(k, "attestor-prod|")]) == toset([
+      "roles/containeranalysis.notes.attacher",
+      "roles/containeranalysis.occurrences.editor",
+    ]) && alltrue([for k, b in local.stage_sa_bindings : b.scope == "project" && b.key == "security" if startswith(k, "attestor-prod|")])
+    error_message = "attestor-prod solo adjunta atestaciones en el proyecto de seguridad (la llave la da 2-security)."
+  }
+
+  assert {
+    condition = (
+      contains(keys(local.stage_sa_bindings), "4-projects-prod|folder|prod|roles/binaryauthorization.policyEditor") &&
+      !contains(keys(local.stage_sa_bindings), "4-projects-dev|folder|dev|roles/binaryauthorization.policyEditor") &&
+      !contains(keys(local.stage_sa_bindings), "4-projects-qa|folder|qa|roles/binaryauthorization.policyEditor")
+    )
+    error_message = "Solo 4-projects-prod edita la política de Binary Authorization, y solo en la carpeta prod."
+  }
+
+  assert {
+    condition     = toset(google_organization_iam_custom_role.this["attestor_iam_admin"].permissions) == toset(["binaryauthorization.attestors.get", "binaryauthorization.attestors.getIamPolicy", "binaryauthorization.attestors.setIamPolicy"])
+    error_message = "attestor_iam_admin solo administra el IAM del attestor, sin crearlo ni cambiar su llave."
+  }
+
+  assert {
+    condition     = contains(keys(local.stage_sa_bindings), "2-security|project|security|roles/binaryauthorization.attestorsAdmin")
+    error_message = "2-security crea el attestor qa-approved en el proyecto de seguridad."
+  }
 }

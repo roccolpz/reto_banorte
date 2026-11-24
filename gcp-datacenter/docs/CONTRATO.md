@@ -118,7 +118,7 @@ Nombres exactos; los consumidores dependen de ellos.
 
 **0-bootstrap**
 - `seed_project_id` (string), `state_bucket` (string), `state_kms_key` (string)
-- `stage_service_accounts` (map(string)): llaves `plan`, `1-org`, `2-security`, `3-networks-hub`, `3-networks-dev`, `3-networks-qa`, `3-networks-prod`, `4-projects-dev`, `4-projects-qa`, `4-projects-prod`, `5-workloads-dev`, `5-workloads-qa`, `5-workloads-prod` → email
+- `stage_service_accounts` (map(string)): llaves `plan`, `1-org`, `2-security`, `3-networks-hub`, `3-networks-dev`, `3-networks-qa`, `3-networks-prod`, `4-projects-dev`, `4-projects-qa`, `4-projects-prod`, `5-workloads-dev`, `5-workloads-qa`, `5-workloads-prod`, `attestor-prod` (firma imágenes de prod; no ejecuta Terraform ni toca el estado, ADR 0022-k) → email
 - `wif_provider_name` (string, `projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<prov>`)
 - `bootstrap_folder_id` (string)
 
@@ -128,10 +128,12 @@ Nombres exactos; los consumidores dependen de ellos.
 - `common_project_numbers` (map(string)): mismas llaves → número de proyecto (2-security lo usa como destino de egreso de VPC-SC, ADR 0013-g)
 - `net_host_project_ids` (map(string)): `dev`, `qa`, `prod` (proyectos ya habilitados como Shared VPC host por 1-org NO; los habilita 3-networks)
 - `audit_log_bucket` (string)
-- `custom_role_ids` (map(string)): `kms_key_iam_admin`, `tag_value_iam_admin` → `organizations/<id>/roles/<nombre>` (roles mínimos para que 4-projects otorgue permisos sobre llaves y valores de etiqueta sin poder destruirlos)
+- `custom_role_ids` (map(string)): `kms_key_iam_admin`, `tag_value_iam_admin`, `attestor_iam_admin` → `organizations/<id>/roles/<nombre>` (roles mínimos para que 4-projects otorgue permisos sobre llaves, valores de etiqueta y el attestor de Binary Authorization sin poder destruirlos; ADR 0022-k)
 
 **2-security**
 - `kms_keys` (map(map(string))): `[env][purpose]` → id de llave; `purpose` ∈ `storage`, `sql`, `gke`; regiones: llaves us-central1; prod además `sql-dr` en us-east4 y `storage-us` en la multi-región us (ADR 0002-d)
+- `binauthz_attestor` (object): `id`, `project`, `name` del attestor `qa-approved` de prod (ADR 0022-k)
+- `binauthz_key_version` (string): `projects/.../cryptoKeyVersions/1` de la llave de firma del attestor (ADR 0022-k)
 - `secret_ids` (map(map(string))): `[env][nombre]` → id del secreto (contenedor sin versión)
 - `access_policy_name` (string, número)
 - `perimeter_names` (map(string)): `dev`, `qa`, `prod` → `accessPolicies/<n>/servicePerimeters/<nombre>`

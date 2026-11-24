@@ -23,6 +23,9 @@ IAM y el sink de auditoría. Corre con la SA `sa-tf-1-org` creada por `0-bootstr
   - Grupos humanos de `var.groups` (Fase 3, §3.2). Si el mapa está vacío no se crea ningún binding.
     Los grupos ordinarios solo leen; los cambios van por pull request. `break_glass` tiene la administración
     de emergencia de la organización y queda sin miembros fuera de un incidente (ADR 0009-g).
+    `qa_approvers` agrupa a los usuarios de QA que aprueban los pases a prod: solo lee las carpetas `qa` y `prod`
+    (`browser`, `container.clusterViewer`, `logging.viewer`, `monitoring.viewer`); su aprobación ocurre en
+    GitHub, no en GCP (ADR 0020-k).
     `billing_admins` solo recibe `billing.viewer` en la organización. El rol `roles/billing.admin` en la
     cuenta de facturación se otorga a mano (la SA de 1-org tiene `billing.user`, que no puede cambiar el IAM
     de la cuenta); ver `docs/runbooks/bootstrap-first-apply.md`.

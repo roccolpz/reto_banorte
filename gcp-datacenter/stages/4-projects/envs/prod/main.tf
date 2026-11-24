@@ -45,5 +45,6 @@ module "env" {
   labels          = local.labels
 
   deployer_service_account = data.terraform_remote_state.bootstrap.outputs.stage_service_accounts["5-workloads-${local.env}"]
+  binauthz_attestor        = data.terraform_remote_state.security.outputs.binauthz_attestor
   secure_tag_values        = data.terraform_remote_state.network.outputs.secure_tag_values
 }

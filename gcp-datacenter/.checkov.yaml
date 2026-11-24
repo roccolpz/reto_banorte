@@ -20,7 +20,8 @@ skip-check:
   - CKV_GCP_24
   # RBAC con Google Groups requiere un dominio de Workspace; los grupos son opcionales (CONTRATO §7).
   - CKV_GCP_65
-  # Binary Authorization queda fuera del alcance de la entrega (ADR 0001).
+  # Binary Authorization: el módulo gke lo activa con un bloque dinámico (enable_binary_authorization, true por
+  # defecto) que Checkov no resuelve; la política que exige la atestación de QA en prod está en 4-projects (ADR 0022-k).
   - CKV_GCP_66
   # Logs de acceso por bucket: la auditoría se cubre con Data Access audit logs (DATA_WRITE) y el sink central de 1-org.
   - CKV_GCP_62
@@ -32,7 +33,9 @@ skip-check:
   # --- Falsos positivos: Checkov no resuelve valores que vienen de variables o locals ---
   # Cloud SQL usa ssl_mode = "ENCRYPTED_ONLY" (la regla solo mira el campo viejo require_ssl).
   - CKV_GCP_6
-  # La rotación de 90 días viene de la variable rotation_period del módulo kms (validada <= 7776000s).
+  # La rotación de 90 días viene de la variable rotation_period del módulo kms (validada <= 7776000s). La llave de firma
+  # del attestor (2-security/binauthz.tf) es ASYMMETRIC_SIGN y GCP no permite rotación automática en esas llaves; se
+  # rota a mano (ADR 0022-k).
   - CKV_GCP_43
   # El MIG fija block-project-ssh-keys = "TRUE"; la VM de onprem-sim usa OS Login y no tiene IP pública.
   - CKV_GCP_32

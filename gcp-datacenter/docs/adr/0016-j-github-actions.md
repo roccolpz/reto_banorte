@@ -14,7 +14,8 @@ GitHub Actions ejecuta todo el ciclo:
 
 - `ci.yml` en cada PR: formato, tflint, validate, `terraform test`, Checkov, pruebas de políticas, plan y la compilación
   de Terratest.
-- `apply.yml` al fusionar a main: dev, pruebas de humo de dev, qa, y prod con dos aprobaciones.
+- `apply.yml` al fusionar a main: dev, pruebas de humo de dev, qa, y prod con dos aprobaciones de QA (job
+  `qa-approval`, ADR 0021-k) más la aprobación del environment `prod`.
 - `drift.yml` diario y `terratest.yml` nocturno.
 
 Se autentica con Workload Identity Federation (ADR 0004-e) y suplanta una SA por etapa y entorno. Los environments
@@ -32,6 +33,7 @@ de GitHub (`dev`, `qa`, `prod`) dan las aprobaciones, y WIF limita las SA de pro
 
 ## Consecuencias
 
-- La protección de main y los environments se configuran en GitHub; no hay Terraform para ellos en esta entrega.
+- La protección de main y los environments se configuran en GitHub; no hay Terraform para ellos en esta entrega. El
+  ruleset de main se versiona como JSON en `.github/rulesets/main.json` (ADR 0021-k).
 - Las acciones de terceros se fijan por SHA para que una etiqueta movida no cambie el pipeline.
 - Los minutos de Actions del plan de la organización limitan la frecuencia de Terratest.
