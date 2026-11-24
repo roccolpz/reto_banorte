@@ -37,6 +37,11 @@ runs:
         ROOT: ${{ inputs.root }}
         BUCKET: ${{ inputs.state_bucket }}
       run: |
+        # Ajustes del laboratorio versionados (lab.tfvars): todo plan posterior del job los usa y pesan más que TF_VAR_*.
+        # No es *.auto.tfvars para que terraform test no los lea.
+        if [ -f "$ROOT/lab.tfvars" ]; then
+          echo "TF_CLI_ARGS_plan=-var-file=lab.tfvars" >>"$GITHUB_ENV"
+        fi
         if [ -n "$BUCKET" ]; then
           terraform -chdir="$ROOT" init -input=false -backend-config="bucket=$BUCKET"
         else

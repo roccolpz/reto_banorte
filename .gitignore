@@ -18,6 +18,8 @@ crash.*.log
 # to change depending on the environment.
 *.tfvars
 *.tfvars.json
+# Excepción: ajustes del laboratorio sin secretos, para que el pipeline aplique lo mismo que el despliegue a mano.
+!lab.tfvars
 
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in

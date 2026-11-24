@@ -51,7 +51,7 @@ Cada línea es una raíz. En cada una: `cp terraform.tfvars.example terraform.tf
 6. `3-networks/envs/dev`, `4-projects/envs/dev`, `5-workloads/envs/dev`
 7. `2-security` otra vez: mete dev en su perímetro y crea accesores de secretos y egreso (ADR 0007-f, 0013-g).
 8. Probar dev: `tests/e2e/connectivity.sh` y un segundo `plan` sin cambios en cada raíz.
-9. Repetir 6 y 7 para qa, luego para prod.
+9. Repetir 6 y 7 para qa, luego para prod. Con DR en prod, `3-networks/hub` necesita `vpn_regions = ["us-central1", "us-east4"]`.
 
 Guardar la salida de cada apply para revisarla:
 
@@ -82,3 +82,25 @@ En orden inverso: 5-workloads, 4-projects, 3-networks de cada entorno (ver `dest
 para destrucción) y los proyectos quedan 30 días en `DELETE_REQUESTED`; por eso un nuevo intento usa otro
 `suffix`. Los túneles VPN, los clústeres GKE y Cloud SQL cobran por hora: destruirlos al terminar cada sesión de
 prueba si no se van a usar.
+
+## 6. Pasar al pipeline
+
+Lo aplicado a mano debe quedar igual cuando corre `apply.yml`; si no, el primer apply del pipeline revierte el
+laboratorio (por ejemplo, sin `compact_projects` 1-org planearía los 14 proyectos).
+
+- Los ajustes del laboratorio sin secretos van versionados en `lab.tfvars` de cada raíz que los necesita
+  (`1-org`, `2-security`, `5-workloads/envs/prod`). La acción `tf-init` los pasa a todo `plan` con
+  `TF_CLI_ARGS_plan=-var-file=lab.tfvars`, que pesa más que los `TF_VAR_*`. No se llaman `*.auto.tfvars` para que
+  `terraform test` no los lea. A mano: `terraform plan -var-file=lab.tfvars -out=tfplan`.
+- Lo sensible o propio de la cuenta va en variables de GitHub (tabla de `docs/README.md`): `TF_VAR_ORG_ID`,
+  `TF_VAR_BILLING_ACCOUNT`, `TF_VAR_SUFFIX`, `TF_STATE_BUCKET`, `WIF_PROVIDER`, `NOTIFICATION_EMAIL`,
+  `TF_LABELS_JSON` (con las mismas etiquetas que los `terraform.tfvars` locales, o el pipeline las cambia) y los
+  `TF_SA_*` de la salida `stage_service_accounts` de 0-bootstrap.
+- Environments `dev`, `qa` y `prod` en GitHub; `prod` con dos revisores. Protección de `main`: PR obligatorio y
+  checks de `ci.yml`.
+- Primera corrida: `workflow_dispatch` de `apply.yml` con todas las raíces; cada plan debe salir sin cambios.
+
+Flujo de cambios después: rama → PR (`ci.yml` muestra el plan de cada raíz afectada) → merge a `main` →
+`apply.yml` aplica dev, corre las pruebas de humo de dev, aplica qa y espera las dos aprobaciones de prod. No hay
+ramas por entorno: el mismo commit pasa por dev, qa y prod, y las diferencias entre entornos están en el código
+(tamaños por `env`) y en `lab.tfvars`.
