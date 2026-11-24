@@ -1,0 +1,152 @@
+# Apply al hacer merge a main, en orden de etapas 1 -> 5 y por entorno: comunes -> dev -> qa -> prod.
+# 0-bootstrap no se aplica aquí: lo ejecuta un administrador (runbook bootstrap-first-apply.md).
+# dev y qa se aplican solos; cada job de prod y de las etapas comunes (1-org, 2-security, 3-networks/hub) espera la
+# aprobación del environment "prod" (dos revisores obligatorios, configurado en Settings > Environments > prod):
+# sus SA solo se impersonan desde ese environment.
+# Solo se aplican las raíces afectadas por el push; workflow_dispatch aplica todas.
+# Entre dev y qa corre tests-dev (pruebas de humo de dev): si fallan, qa y prod no se aplican.
+name: apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gcp-datacenter/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  detect:
+    runs-on: ubuntu-24.04
+    outputs:
+      roots: ${{ steps.discover.outputs.roots }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: discover
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          d=gcp-datacenter/scripts/discover-roots.sh
+          if [ "$EVENT" = workflow_dispatch ] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            roots=$(bash "$d" roots --json)
+          else
+            roots=$(git diff --name-only "$BEFORE" HEAD | bash "$d" changed --json)
+          fi
+          # La cadena de jobs de abajo lista las raíces del contrato; una raíz nueva debe agregarse a mano.
+          known='["gcp-datacenter/stages/0-bootstrap","gcp-datacenter/stages/1-org","gcp-datacenter/stages/2-security","gcp-datacenter/stages/3-networks/hub",
+            "gcp-datacenter/stages/3-networks/envs/dev","gcp-datacenter/stages/3-networks/envs/qa","gcp-datacenter/stages/3-networks/envs/prod",
+            "gcp-datacenter/stages/4-projects/envs/dev","gcp-datacenter/stages/4-projects/envs/qa","gcp-datacenter/stages/4-projects/envs/prod",
+            "gcp-datacenter/stages/5-workloads/envs/dev","gcp-datacenter/stages/5-workloads/envs/qa","gcp-datacenter/stages/5-workloads/envs/prod"]'
+          jq -r --argjson known "$known" '.[] | select(. as $r | $known | index($r) | not)' <<<"$roots" |
+            while IFS= read -r r; do echo "::warning::$r no está en la cadena de apply.yml; no se aplicará"; done
+          echo "Raíces a aplicar: $roots"
+          echo "roots=$roots" >>"$GITHUB_OUTPUT"
+
+  org:
+    needs: detect
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/1-org, environment: prod, roots: "${{ needs.detect.outputs.roots }}" }
+
+  security:
+    needs: [detect, org]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/2-security, environment: prod, roots: "${{ needs.detect.outputs.roots }}" }
+
+  net-hub:
+    needs: [detect, security]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/3-networks/hub, environment: prod, roots: "${{ needs.detect.outputs.roots }}" }
+
+  # ---- dev ----
+  net-dev:
+    needs: [detect, net-hub]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/3-networks/envs/dev, environment: dev, roots: "${{ needs.detect.outputs.roots }}" }
+
+  projects-dev:
+    needs: [detect, net-dev]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/4-projects/envs/dev, environment: dev, roots: "${{ needs.detect.outputs.roots }}" }
+
+  workloads-dev:
+    needs: [detect, projects-dev]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/5-workloads/envs/dev, environment: dev, roots: "${{ needs.detect.outputs.roots }}" }
+
+  # Puerta de dev: qa y prod se aplican solo si dev quedó sano (plan sin cambios, GKE, Cloud SQL y MIG).
+  # Corre en cada apply con raíces afectadas, aunque dev no haya cambiado.
+  tests-dev:
+    needs: [detect, workloads-dev]
+    if: ${{ !cancelled() && !failure() && needs.detect.outputs.roots != '[]' }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with:
+      root: gcp-datacenter/stages/5-workloads/envs/dev
+      environment: dev
+      roots: "${{ needs.detect.outputs.roots }}"
+      mode: smoke
+
+  # ---- qa (después de las pruebas de dev) ----
+  net-qa:
+    needs: [detect, tests-dev]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/3-networks/envs/qa, environment: qa, roots: "${{ needs.detect.outputs.roots }}" }
+
+  projects-qa:
+    needs: [detect, net-qa]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/4-projects/envs/qa, environment: qa, roots: "${{ needs.detect.outputs.roots }}" }
+
+  workloads-qa:
+    needs: [detect, projects-qa]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/5-workloads/envs/qa, environment: qa, roots: "${{ needs.detect.outputs.roots }}" }
+
+  # ---- prod (después de qa; cada job espera aprobación del environment prod) ----
+  net-prod:
+    needs: [detect, workloads-qa]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/3-networks/envs/prod, environment: prod, roots: "${{ needs.detect.outputs.roots }}" }
+
+  projects-prod:
+    needs: [detect, net-prod]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/4-projects/envs/prod, environment: prod, roots: "${{ needs.detect.outputs.roots }}" }
+
+  workloads-prod:
+    needs: [detect, projects-prod]
+    if: ${{ !cancelled() && !failure() }}
+    uses: ./.github/workflows/_tf-apply.yml
+    permissions: { contents: read, id-token: write }
+    with: { root: gcp-datacenter/stages/5-workloads/envs/prod, environment: prod, roots: "${{ needs.detect.outputs.roots }}" }

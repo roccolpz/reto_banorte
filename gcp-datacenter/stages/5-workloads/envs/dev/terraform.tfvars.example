@@ -1,0 +1,25 @@
+# Copiar a terraform.tfvars (excluido por .gitignore). En CI llegan como TF_VAR_*.
+state_bucket       = "acme-tf-state-xxxx"
+prefix             = "acme"
+notification_email = "noc@example.com"
+
+labels = {
+  app         = "landing-zone"
+  owner       = "platform"
+  cost_center = "infra"
+}
+
+# dev: zonal, sin HA, sin réplica DR, bucket regional y sin protección contra borrado.
+regional            = false
+deletion_protection = false
+sql_ha              = false
+enable_dr_replica   = false
+bucket_dual_region  = false
+
+# Opcionales. Sin valor, cada entorno usa sus tamaños (dev/qa: e2-medium 1-2 y db-custom-1-3840;
+# prod: e2-standard-2 1-3 y db-custom-2-7680) y prod crea el clúster GKE DR en us-east4.
+# gke_node_pools    = { default = { machine_type = "e2-standard-2", min_count = 1, max_count = 3 } }
+# sql_tier          = "db-custom-2-7680"
+# enable_dr_cluster = true
+# uptime_check_host = "app.example.com"
+# image_family      = "projects/<proyecto-de-imagenes>/global/images/family/<familia>"

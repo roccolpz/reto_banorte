@@ -1,0 +1,96 @@
+# Workflow reutilizable: plan + apply de una raíz con la SA de su etapa, dentro de un environment de GitHub.
+# La SA se toma de la variable TF_SA_<ETAPA>[_<ENV>] (p. ej. 3-networks/envs/prod -> TF_SA_3_NETWORKS_PROD),
+# que corresponde a la llave de la salida stage_service_accounts de 0-bootstrap.
+# mode: smoke no aplica: corre gcp-datacenter/test/smoke/smoke.sh contra la raíz (puerta de dev antes de qa).
+name: _tf-apply
+
+on:
+  workflow_call:
+    inputs:
+      root:
+        description: Raíz a aplicar, p. ej. gcp-datacenter/stages/1-org
+        type: string
+        required: true
+      environment:
+        description: Environment de GitHub (dev, qa, prod; las etapas comunes usan prod). prod exige aprobación.
+        type: string
+        required: true
+      roots:
+        description: Arreglo JSON de raíces afectadas; si la raíz no está, el job se omite.
+        type: string
+        required: true
+      mode:
+        description: "apply (plan + apply si la raíz está en roots) o smoke (pruebas de humo de la raíz, siempre)."
+        type: string
+        default: apply
+
+permissions:
+  contents: read
+  id-token: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  apply:
+    if: inputs.mode == 'smoke' || contains(fromJSON(inputs.roots), inputs.root)
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: tf-${{ inputs.root }}
+      cancel-in-progress: false
+    env:
+      ROOT: ${{ inputs.root }}
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_org_id: ${{ vars.TF_VAR_ORG_ID }}
+      TF_VAR_billing_account: ${{ vars.TF_VAR_BILLING_ACCOUNT }}
+      TF_VAR_suffix: ${{ vars.TF_VAR_SUFFIX }}
+      TF_VAR_state_bucket: ${{ vars.TF_STATE_BUCKET }}
+      TF_VAR_labels: ${{ vars.TF_LABELS_JSON }}
+      TF_VAR_notification_email: ${{ vars.NOTIFICATION_EMAIL }}
+      # Solo 1-org la declara: bloquea la retención del bucket de auditoría (irreversible, contrato §8).
+      # Una organización de pruebas que deba destruirse define la variable AUDIT_RETENTION_LOCKED=false.
+      TF_VAR_audit_retention_locked: ${{ vars.AUDIT_RETENTION_LOCKED || 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: meta
+        run: |
+          key=${ROOT#gcp-datacenter/stages/}
+          key=${key//\/envs\//-}
+          key=${key//\//-}
+          var="TF_SA_$(tr 'a-z-' 'A-Z_' <<<"$key")"
+          echo "Raíz $ROOT -> variable $var"
+          echo "sa_var=$var" >>"$GITHUB_OUTPUT"
+
+      - name: Verificar variables
+        env:
+          SA: ${{ vars[steps.meta.outputs.sa_var] }}
+          SA_VAR: ${{ steps.meta.outputs.sa_var }}
+          WIF: ${{ vars.WIF_PROVIDER }}
+          BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          [ -n "$SA" ] || { echo "::error::falta la variable $SA_VAR"; exit 1; }
+          [ -n "$WIF" ] || { echo "::error::falta la variable WIF_PROVIDER"; exit 1; }
+          [ -n "$BUCKET" ] || { echo "::error::falta la variable TF_STATE_BUCKET"; exit 1; }
+
+      - uses: ./.github/actions/tf-init
+        with:
+          root: ${{ inputs.root }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars[steps.meta.outputs.sa_var] }}
+          state_bucket: ${{ vars.TF_STATE_BUCKET }}
+
+      - if: inputs.mode == 'apply'
+        run: terraform -chdir="$ROOT" plan -input=false -no-color -out=tfplan
+
+      - if: inputs.mode == 'apply'
+        run: terraform -chdir="$ROOT" apply -input=false -no-color tfplan
+
+      - if: inputs.mode == 'smoke'
+        name: Pruebas de humo
+        run: bash gcp-datacenter/test/smoke/smoke.sh "$ROOT"

@@ -1,0 +1,100 @@
+# Pruebas de integración (Terratest): cada módulo se aplica, se comprueba que un segundo plan no tenga cambios y
+# se destruye, en un proyecto efímero que este workflow crea y borra. Nocturno y manual (antes de cada versión).
+# Preparación (folder de pruebas, SA, variables): gcp-datacenter/docs/runbooks/terratest.md.
+name: terratest
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      run:
+        description: "Filtro -run de go test (vacío = todas), p. ej. TestKMS|TestStorage"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terratest
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VERSION: "1.17.2"
+
+jobs:
+  terratest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # Proyecto nuevo por corrida (6 a 30 caracteres); se borra al final aunque las pruebas fallen.
+      TEST_PROJECT_ID: acme-tt-${{ github.run_id }}-${{ github.run_attempt }}
+      TEST_FOLDER_ID: ${{ vars.TEST_FOLDER_ID }}
+      TEST_BILLING_ACCOUNT: ${{ vars.TEST_BILLING_ACCOUNT }}
+      # Opcional: sin política de acceso de pruebas, TestVPCSC se omite.
+      TEST_ACCESS_POLICY: ${{ vars.TEST_ACCESS_POLICY }}
+      RUN_FILTER: ${{ inputs.run }}
+    steps:
+      - name: Verificar variables
+        env:
+          SA: ${{ vars.TF_SA_TERRATEST }}
+          WIF: ${{ vars.WIF_PROVIDER }}
+        run: |
+          for v in SA WIF TEST_FOLDER_ID TEST_BILLING_ACCOUNT; do
+            [ -n "${!v}" ] || { echo "::error::falta $v (ver docs/runbooks/terratest.md)"; exit 1; }
+          done
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: gcp-datacenter/test/go.mod
+          cache-dependency-path: gcp-datacenter/test/go.sum
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.TF_SA_TERRATEST }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Crear el proyecto efímero
+        run: |
+          gcloud projects create "$TEST_PROJECT_ID" --folder="${TEST_FOLDER_ID#folders/}" \
+            --labels=env=dev,app=terratest,owner=plataforma,cost_center=ti-001,managed_by=github-actions
+          gcloud billing projects link "$TEST_PROJECT_ID" --billing-account="$TEST_BILLING_ACCOUNT"
+          gcloud services enable --project="$TEST_PROJECT_ID" \
+            compute.googleapis.com container.googleapis.com sqladmin.googleapis.com \
+            servicenetworking.googleapis.com cloudkms.googleapis.com storage.googleapis.com \
+            monitoring.googleapis.com logging.googleapis.com dns.googleapis.com \
+            networkconnectivity.googleapis.com iam.googleapis.com cloudresourcemanager.googleapis.com \
+            accesscontextmanager.googleapis.com cloudbilling.googleapis.com
+
+      - name: go test
+        working-directory: gcp-datacenter/test
+        run: go test -v -count=1 -timeout 170m -run "${RUN_FILTER:-.}" ./integration/...
+
+      # Red de seguridad: si un destroy falló, borrar el proyecto elimina lo que quedó.
+      - name: Borrar el proyecto efímero
+        if: always()
+        run: |
+          if gcloud projects describe "$TEST_PROJECT_ID" >/dev/null 2>&1; then
+            gcloud projects delete "$TEST_PROJECT_ID" --quiet
+          fi

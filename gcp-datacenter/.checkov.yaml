@@ -1,0 +1,68 @@
+# Configuración de Checkov para el job de CI (soft-fail desactivado: cualquier hallazgo bloquea el PR).
+# Cada omisión lleva su motivo. Agregar una omisión requiere revisión del equipo de seguridad (CODEOWNERS).
+framework:
+  - terraform
+compact: true
+quiet: true
+soft-fail: false
+download-external-modules: false
+skip-path:
+  # Legado con estado local y recursos vivos; se retira al migrar a las etapas nuevas.
+  - stages/test-orchestration
+  - modules/network-host
+  # Fixtures de políticas (JSON de plan), no son código Terraform.
+  - policies/testdata
+  # Fixtures de Terratest: proyecto efímero con mínimos (sin CMEK en GKE, bucket con force_destroy). Los módulos
+  # se escanean con la configuración real de las etapas.
+  - test
+skip-check:
+  # PodSecurityPolicy se eliminó en GKE 1.25; la regla ya no aplica.
+  - CKV_GCP_24
+  # RBAC con Google Groups requiere un dominio de Workspace; los grupos son opcionales (CONTRATO §7).
+  - CKV_GCP_65
+  # Binary Authorization queda fuera del alcance de la entrega (ADR 0001).
+  - CKV_GCP_66
+  # Logs de acceso por bucket: la auditoría se cubre con Data Access audit logs (DATA_WRITE) y el sink central de 1-org.
+  - CKV_GCP_62
+  # Audit config por proyecto: se configura una sola vez a nivel organización (1-org/logging.tf) y lo heredan todos.
+  - CKV2_GCP_5
+  # Bucket Lock de la auditoría: lo controla audit_retention_locked (true por defecto en el pipeline; false solo en
+  # la organización de prueba porque es irreversible, CONTRATO §8).
+  - CKV2_GCP_4
+  # --- Falsos positivos: Checkov no resuelve valores que vienen de variables o locals ---
+  # Cloud SQL usa ssl_mode = "ENCRYPTED_ONLY" (la regla solo mira el campo viejo require_ssl).
+  - CKV_GCP_6
+  # La rotación de 90 días viene de la variable rotation_period del módulo kms (validada <= 7776000s).
+  - CKV_GCP_43
+  # El MIG fija block-project-ssh-keys = "TRUE"; la VM de onprem-sim usa OS Login y no tiene IP pública.
+  - CKV_GCP_32
+  # GKE: resource_labels = var.labels; GKE_METADATA está en workload_metadata_config del node pool, no del clúster.
+  - CKV_GCP_21
+  - CKV_GCP_67
+  - CKV_GCP_69
+  # La VM de onprem-sim no tiene service_account (ni la de defecto).
+  - CKV_GCP_30
+  # Las VPC usan políticas de firewall de red (google_compute_network_firewall_policy*), que la regla no reconoce;
+  # solo cuenta google_compute_firewall.
+  - CKV2_GCP_18
+  # WIF de GitHub: la condición limita por assertion.repository (y por environment para prod), patrón recomendado
+  # por Google; la regla solo acepta una condición sobre assertion.sub.
+  - CKV_GCP_125
+  # --- No aplica ---
+  # Autenticación básica y certificados de cliente ya no existen en GKE; el acceso es por IAM.
+  - CKV_GCP_19
+  - CKV_GCP_13
+  # Subred proxy-only (REGIONAL_MANAGED_PROXY): GCP no admite flow logs ni Private Google Access en ella.
+  - CKV_GCP_26
+  - CKV_GCP_74
+  # Sin IPv6 en la red.
+  - CKV_GCP_76
+  # CSEK (llave enviada en cada llamada) no se puede gestionar desde Terraform; los datos usan CMEK de 2-security.
+  # La VM de onprem-sim y el tópico de SCC no guardan datos de la aplicación.
+  - CKV_GCP_38
+  - CKV_GCP_83
+  # GCS no permite versionado en un bucket con política de retención (el de auditoría).
+  - CKV_GCP_78
+  # prevent_destroy en las llaves KMS impediría destruir la organización de prueba; GCP ya programa la destrucción
+  # de cada versión a 30 días, sin borrado inmediato.
+  - CKV_GCP_82
