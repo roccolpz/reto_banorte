@@ -31,16 +31,16 @@ run "crea_una_sa_por_etapa_y_limita_prod_al_environment_prod" {
   }
 
   assert {
-    condition     = endswith(google_service_account_iam_member.wif["5-workloads-prod"].member, "/attribute.environment/prod")
-    error_message = "Las SA de prod solo se impersonan desde el environment prod de GitHub."
+    condition     = endswith(google_service_account_iam_member.wif["5-workloads-prod"].member, "/attribute.prod_main/true")
+    error_message = "Las SA de prod solo se impersonan desde el environment prod de GitHub sobre main."
   }
 
   assert {
     condition = alltrue([
       for k in ["1-org", "2-security", "3-networks-hub"] :
-      endswith(google_service_account_iam_member.wif[k].member, "/attribute.environment/prod")
+      endswith(google_service_account_iam_member.wif[k].member, "/attribute.prod_main/true")
     ])
-    error_message = "Las SA de etapas comunes (1-org, 2-security, 3-networks-hub) solo se impersonan desde el environment prod."
+    error_message = "Las SA de etapas comunes (1-org, 2-security, 3-networks-hub) solo se impersonan desde el environment prod sobre main."
   }
 
   assert {
@@ -56,6 +56,11 @@ run "crea_una_sa_por_etapa_y_limita_prod_al_environment_prod" {
   assert {
     condition     = google_iam_workload_identity_pool_provider.github.attribute_condition == "assertion.repository == \"roccolpz/reto_banorte\""
     error_message = "WIF debe aceptar solo el repositorio autorizado."
+  }
+
+  assert {
+    condition     = google_iam_workload_identity_pool_provider.github.attribute_mapping["attribute.prod_main"] == "has(assertion.environment) && assertion.environment == \"prod\" && assertion.ref == \"refs/heads/main\" ? \"true\" : \"false\""
+    error_message = "attribute.prod_main es \"true\" solo con environment prod y ref refs/heads/main."
   }
 }
 

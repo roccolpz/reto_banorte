@@ -1,8 +1,9 @@
 # Apply al hacer merge a main, en orden de etapas 1 -> 5 y por entorno: comunes -> dev -> qa -> prod.
 # 0-bootstrap no se aplica aquí: lo ejecuta un administrador (runbook bootstrap-first-apply.md).
 # dev y qa se aplican solos; cada job de prod y de las etapas comunes (1-org, 2-security, 3-networks/hub) espera la
-# aprobación del environment "prod" (dos revisores obligatorios, configurado en Settings > Environments > prod):
-# sus SA solo se impersonan desde ese environment.
+# aprobación del environment "prod" (Settings > Environments > prod): sus SA solo se impersonan desde ese environment
+# y sobre main. GitHub pide UNA sola aprobación de la lista de reviewers del environment; las dos aprobaciones de QA
+# las exige el job qa-approval (ADR 0021-k) antes de cualquier job que use el environment prod.
 # Solo se aplican las raíces afectadas por el push; workflow_dispatch aplica todas.
 # Entre dev y qa corre tests-dev (pruebas de humo de dev): si fallan, qa y prod no se aplican.
 name: apply
@@ -52,8 +53,35 @@ jobs:
           echo "Raíces a aplicar: $roots"
           echo "roots=$roots" >>"$GITHUB_OUTPUT"
 
-  org:
+  # Puerta de QA (ADR 0021-k): si el push afecta una raíz de prod o una etapa común (las que usan el environment
+  # prod), el PR fusionado debe tener al menos 2 aprobaciones de usuarios de QA (variable QA_APPROVERS) sobre su
+  # último commit. Corre con el código de main, no con el de la rama del PR. Si falla, no se aplica nada de este push.
+  qa-approval:
     needs: detect
+    runs-on: ubuntu-24.04
+    permissions: { contents: read, pull-requests: read }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: scope
+        name: Raíces que exigen aprobación de QA
+        env:
+          ROOTS: ${{ needs.detect.outputs.roots }}
+        run: |
+          gated=$(jq -c '[.[] | select(test("/envs/prod$") or IN("gcp-datacenter/stages/1-org", "gcp-datacenter/stages/2-security", "gcp-datacenter/stages/3-networks/hub"))]' <<<"$ROOTS")
+          echo "Raíces de prod o comunes en este push: $gated"
+          echo "gated=$gated" >>"$GITHUB_OUTPUT"
+      - if: steps.scope.outputs.gated != '[]'
+        name: Al menos 2 aprobaciones de QA en el PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QA_APPROVERS: ${{ vars.QA_APPROVERS }}
+          QA_MIN_APPROVALS: "2"
+        run: bash gcp-datacenter/scripts/check-qa-approvals.sh "$GITHUB_REPOSITORY" "$GITHUB_SHA"
+
+  org:
+    needs: [detect, qa-approval]
     uses: ./.github/workflows/_tf-apply.yml
     permissions: { contents: read, id-token: write }
     with: { root: gcp-datacenter/stages/1-org, environment: prod, roots: "${{ needs.detect.outputs.roots }}" }

@@ -9,11 +9,14 @@ Cómo se configura y opera el pipeline de la landing zone. Las convenciones de c
 2. `ci.yml` corre en el PR:
    - `fmt`, `tflint`, `checkov` sobre todo `gcp-datacenter/`;
    - `policy-tests` (`conftest verify` y los planes de ejemplo);
+   - `script-tests` (pruebas de `scripts/check-qa-approvals.sh` con un `gh` falso);
    - `module-tests` (`terraform test` en cada módulo con `tests/`);
    - `validate` y `plan` en cada raíz afectada. El plan se pasa a JSON, se evalúa con las políticas y se publica
      como comentario del PR (uno por raíz, se actualiza en cada push).
 3. Revisión de CODEOWNERS y todos los checks en verde. Un plan que viola una política bloquea el merge.
-4. Merge a `main`: `apply.yml` aplica las raíces afectadas en orden. dev y qa solos; prod espera dos aprobaciones.
+4. Merge a `main`: `apply.yml` aplica las raíces afectadas en orden. dev y qa solos. Si el push toca prod o una etapa
+   común, `qa-approval` exige que el PR tenga 2 aprobaciones de QA (ADR 0021-k) y cada job de prod espera además la
+   aprobación del environment `prod`.
 5. `drift.yml` revisa todas las raíces cada día ([drift-response](runbooks/drift-response.md)).
 
 Diagrama: [diagrams/cicd.md](diagrams/cicd.md).
@@ -51,6 +54,7 @@ credencial). Los valores salen de `0-bootstrap` ([bootstrap-first-apply](runbook
 | `TF_VAR_SUFFIX` | Sufijo de 4 caracteres hex → `TF_VAR_suffix` |
 | `TF_LABELS_JSON` | Etiquetas base en JSON, p. ej. `{"app":"landing-zone","owner":"platform","cost_center":"infra"}` → `TF_VAR_labels`. Obligatoria para 1-org (sin default); vacía, las demás raíces usan su default |
 | `NOTIFICATION_EMAIL` | Correo del canal de alertas → `TF_VAR_notification_email` (obligatoria en 5-workloads) |
+| `QA_APPROVERS` | Logins de GitHub de los aprobadores de QA, separados por coma (p. ej. `ana,beto`). Mínimo 2. Vacía, `qa-approval` bloquea todo push que toque prod (ADR 0021-k, [qa-approvers](runbooks/qa-approvers.md)) |
 
 GitHub guarda los nombres de variable en mayúsculas; los workflows los pasan a Terraform con el nombre en minúsculas.
 No se usan llaves JSON ni tokens personales (ADR 0004-e).
@@ -63,32 +67,43 @@ Settings > Environments:
 |-------------|------------|
 | `dev` | Rama de despliegue: solo `main` |
 | `qa` | Rama de despliegue: solo `main` |
-| `prod` | Rama de despliegue: solo `main`; **Required reviewers** con los responsables de plataforma y seguridad |
+| `prod` | Rama de despliegue: solo `main`; **Required reviewers**: los aprobadores de QA; **Prevent self-review** activado |
 
-GitHub pide una sola aprobación de la lista de reviewers del environment, no dos. Para las dos aprobaciones de
-la especificación, agregar al menos dos reviewers con "Prevent self-review" activado (quien hace el merge no
-cuenta) o un segundo environment de puerta. En un repositorio privado, los reviewers y la protección de `main`
-requieren GitHub Pro (gratis con GitHub Student Developer Pack) o hacer público el repositorio.
+GitHub pide **una sola** aprobación de la lista de reviewers del environment, sin importar cuántos haya; agregar más
+reviewers no cambia eso. Las dos aprobaciones de QA las exige el job `qa-approval` de `apply.yml` (ADR 0021-k): cuenta
+las aprobaciones del PR fusionado sobre su último commit, solo de los logins de `QA_APPROVERS`, sin el autor. El
+environment queda como tercera confirmación al momento de aplicar. En un repositorio privado, los reviewers y la
+protección de `main` requieren GitHub Pro (gratis con GitHub Student Developer Pack) o hacer público el repositorio.
 
 Las SA `*-prod` y las de las etapas comunes (`1-org`, `2-security`, `3-networks-hub`) solo aceptan tokens emitidos
-para el environment `prod` (condición de WIF en `0-bootstrap`): un job fuera de ese environment no puede impersonarlas
-aunque tenga la variable. Por eso esas tres raíces corren en `prod` y esperan las dos aprobaciones.
+para el environment `prod` sobre la rama `main` (`attribute.prod_main` en `0-bootstrap`): un job fuera de ese
+environment o de esa rama no puede impersonarlas aunque tenga la variable. Por eso esas tres raíces corren en `prod`.
 
 Cada job de prod (comunes, red, proyectos, cargas) pide aprobación por separado. Para aprobar una sola vez por release, se
 puede agregar un job de "puerta" en `prod` del que dependan los tres; hoy no existe.
 
 ## Protección de `main`
 
-Settings > Branches > Branch protection rules > `main`:
+Ruleset versionado en [`.github/rulesets/main.json`](../../.github/rulesets/main.json). Lo aplica un administrador del
+repositorio (la API no deja a quien solo tiene escritura):
 
-- Require a pull request before merging, 1 aprobación mínima, "Require review from Code Owners".
-- Require status checks to pass: `fmt`, `tflint`, `checkov`, `policy-tests`, y los jobs de matriz `validate` y
-  `plan` (y `module-tests` cuando haya módulos con pruebas).
-- Require branches to be up to date before merging.
-- Do not allow bypassing the above settings.
-- Sin push directo ni force push.
+```bash
+gh api -X POST repos/roccolpz/reto_banorte/rulesets --input .github/rulesets/main.json
+# Para actualizarlo: gh api repos/roccolpz/reto_banorte/rulesets (toma el id) y
+#                    gh api -X PUT repos/roccolpz/reto_banorte/rulesets/<id> --input .github/rulesets/main.json
+```
 
-[CODEOWNERS](../../.github/CODEOWNERS) es una plantilla comentada: reemplaza los equipos y quita el `#`.
+Qué exige:
+
+- Pull request con **2 aprobaciones**, revisión de CODEOWNERS, aprobaciones descartadas en cada push nuevo, la
+  última persona que hizo push no puede ser una de las aprobaciones, y conversaciones resueltas.
+- Check obligatorio `ci-ok` con la rama al día.
+- Sin borrar la rama ni force push. **Sin bypass**, ni para administradores.
+
+Luego quitar la regla clásica de Settings > Branches (hoy solo pide `ci-ok` y los administradores se la saltan) para
+que no haya dos fuentes de verdad.
+
+Las 2 aprobaciones del ruleset pueden venir de cualquiera con escritura; que sean de QA lo verifica `qa-approval`.
 
 ## Herramientas fijadas
 

@@ -16,8 +16,9 @@ da acceso hasta que alguien la revoque a mano. La especificación prohíbe llave
 - Cada etapa y entorno tiene su propia SA (salida `stage_service_accounts`), y una SA `plan` de solo lectura para los
   pull requests y la detección de drift.
 - Las SA `*-prod` y las de `1-org`, `2-security` y `3-networks-hub` solo se pueden impersonar con un token cuyo
-  `environment` sea `prod`: las etapas comunes cambian recursos de los que depende prod. Esos jobs corren en el
-  environment `prod` de GitHub, que exige dos aprobaciones. La SA `plan` se impersona desde cualquier job del repositorio.
+  `environment` sea `prod` y cuyo `ref` sea `refs/heads/main` (`attribute.prod_main`, agregado en ADR 0021-k): las
+  etapas comunes cambian recursos de los que depende prod. Esos jobs corren en el environment `prod` de GitHub, que
+  pide una aprobación; las dos aprobaciones de QA las exige el job `qa-approval` (ADR 0021-k). La SA `plan` se impersona desde cualquier job del repositorio.
 - Los workflows usan `google-github-actions/auth` con `workload_identity_provider` y `service_account` tomados de
   variables de GitHub (no secretos: no son credenciales). Los workflows piden `id-token: write` solo en los jobs que
   se autentican.

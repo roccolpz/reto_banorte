@@ -133,6 +133,16 @@ jobs:
             exit 1
           fi
 
+  # Pruebas de los scripts del pipeline (p. ej. la puerta de QA, ADR 0021-k), con un gh falso: sin red ni token.
+  script-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Puerta de aprobaciones de QA
+        run: bash gcp-datacenter/scripts/tests/check-qa-approvals.test.sh
+
   # terraform test en cada módulo y raíz de etapa con carpeta tests/ (proveedores simulados, sin credenciales).
   module-tests:
     needs: detect
@@ -329,7 +339,7 @@ jobs:
   # afectadas, así que se resumen aquí. Falla si algún job falló o se canceló; "skipped" cuenta como bien.
   ci-ok:
     if: always()
-    needs: [detect, fmt, tflint, checkov, policy-tests, module-tests, terratest-compile, validate, plan]
+    needs: [detect, fmt, tflint, checkov, policy-tests, script-tests, module-tests, terratest-compile, validate, plan]
     runs-on: ubuntu-24.04
     steps:
       - env:

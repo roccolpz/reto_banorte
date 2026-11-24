@@ -33,6 +33,5 @@ environment `prod`). En GCP, el mínimo privilegio para un aprobador es poder ve
 ## Consecuencias
 
 - El grupo se crea a mano en Cloud Identity y su correo va en `groups.qa_approvers`.
-- Falta la parte de GitHub (siguiente paso): equipo `qa-approvers` en CODEOWNERS de las raíces de prod y un
-  ruleset en `main` con dos aprobaciones obligatorias. El environment `prod` de GitHub pide una sola aprobación
-  de su lista de reviewers, así que por sí solo no cumple la regla de dos.
+- La parte de GitHub (regla de dos aprobaciones, ruleset de `main` y CODEOWNERS) está en ADR 0021-k; el alta de
+  las personas, en [runbooks/qa-approvers.md](../runbooks/qa-approvers.md).
