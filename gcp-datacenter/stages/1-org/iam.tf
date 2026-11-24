@@ -58,6 +58,15 @@ locals {
       { scope = "org", key = "org", role = "roles/securitycenter.findingsViewer" },
       { scope = "audit_bucket", key = "audit", role = "roles/storage.objectViewer" },
     ]
+    # Usuarios de QA que aprueban los pases a prod (ADR 0020-k). Su aprobación ocurre en GitHub (pull request y
+    # environment prod), no en GCP: aquí solo leen qa (lo que validaron) y prod (lo que aprueban), sin dev y sin
+    # roles/viewer, que abarca todos los servicios. Nada de escritura ni de suplantar SAs.
+    qa_approvers = flatten([for e in ["qa", "prod"] : [
+      { scope = "folder", key = e, role = "roles/browser" },
+      { scope = "folder", key = e, role = "roles/container.clusterViewer" },
+      { scope = "folder", key = e, role = "roles/logging.viewer" },
+      { scope = "folder", key = e, role = "roles/monitoring.viewer" },
+    ]])
   }
 
   # Roles a medida (P8 y tags seguros): solo administran el IAM del recurso, sin crearlo ni destruirlo.

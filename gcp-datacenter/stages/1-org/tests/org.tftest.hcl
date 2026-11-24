@@ -315,6 +315,7 @@ run "grupos_humanos_solo_leen_fuera_de_break_glass" {
       devops          = "gcp-devops@example.com"
       developers      = "gcp-developers@example.com"
       auditors        = "gcp-auditors@example.com"
+      qa_approvers    = "gcp-qa-approvers@example.com"
     }
   }
 
@@ -337,6 +338,22 @@ run "grupos_humanos_solo_leen_fuera_de_break_glass" {
   assert {
     condition     = contains(keys(local.group_bindings), "security_admins|org|org|roles/securitycenter.adminViewer")
     error_message = "gcp-security-admins revisa SCC sin administrarlo."
+  }
+
+  # qa_approvers: solo lectura, solo en qa y prod (ADR 0020-k).
+  assert {
+    condition     = alltrue([for k, b in local.group_bindings : b.scope == "folder" && contains(["qa", "prod"], b.key) if b.group == "qa_approvers"])
+    error_message = "gcp-qa-approvers solo recibe roles en las carpetas qa y prod (nada en dev, la organización ni proyectos)."
+  }
+
+  assert {
+    condition     = alltrue([for k, b in local.group_bindings : can(regex("^roles/(browser|[a-z]+\\.[a-zA-Z]*[Vv]iewer)$", b.role)) if b.group == "qa_approvers"])
+    error_message = "gcp-qa-approvers solo recibe roles de lectura: la aprobación ocurre en GitHub, no en GCP."
+  }
+
+  assert {
+    condition     = alltrue([for e in ["qa", "prod"] : contains(keys(local.group_bindings), "qa_approvers|folder|${e}|roles/container.clusterViewer")])
+    error_message = "gcp-qa-approvers ve los clústeres de qa y prod para verificar lo que aprueba."
   }
 }
 
