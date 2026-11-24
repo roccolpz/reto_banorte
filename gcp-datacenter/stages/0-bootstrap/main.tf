@@ -44,6 +44,10 @@ locals {
       # Notificaciones de SCC y roles a medida (kms_key_iam_admin, tag_value_iam_admin) que crea 1-org.
       "roles/securitycenter.notificationConfigEditor",
       "roles/iam.organizationRoleAdmin",
+      # Bucket de auditoría y tópico de SCC en el proyecto common: la SA debe administrarlos aunque otro (el primer
+      # apply a mano) haya creado el proyecto.
+      "roles/storage.admin",
+      "roles/pubsub.admin",
     ]
     plan = [
       "roles/viewer",

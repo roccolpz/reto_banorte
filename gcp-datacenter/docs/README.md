@@ -63,7 +63,12 @@ Settings > Environments:
 |-------------|------------|
 | `dev` | Rama de despliegue: solo `main` |
 | `qa` | Rama de despliegue: solo `main` |
-| `prod` | Rama de despliegue: solo `main`; **Required reviewers: 2** (equipos de plataforma y seguridad); "Prevent self-review" activado |
+| `prod` | Rama de despliegue: solo `main`; **Required reviewers** con los responsables de plataforma y seguridad |
+
+GitHub pide una sola aprobación de la lista de reviewers del environment, no dos. Para las dos aprobaciones de
+la especificación, agregar al menos dos reviewers con "Prevent self-review" activado (quien hace el merge no
+cuenta) o un segundo environment de puerta. En un repositorio privado, los reviewers y la protección de `main`
+requieren GitHub Pro (gratis con GitHub Student Developer Pack) o hacer público el repositorio.
 
 Las SA `*-prod` y las de las etapas comunes (`1-org`, `2-security`, `3-networks-hub`) solo aceptan tokens emitidos
 para el environment `prod` (condición de WIF en `0-bootstrap`): un job fuera de ese environment no puede impersonarlas
