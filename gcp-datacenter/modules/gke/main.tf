@@ -78,6 +78,11 @@ resource "google_container_cluster" "primary" {
       key_name = var.database_encryption_key
     }
   }
+
+  # node_config solo describe el pool temporal que remove_default_node_pool borra; sin esto, cada plan reemplaza el clúster.
+  lifecycle {
+    ignore_changes = [node_config]
+  }
 }
 
 resource "google_container_node_pool" "pools" {

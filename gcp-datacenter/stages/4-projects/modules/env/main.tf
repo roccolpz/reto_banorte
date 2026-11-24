@@ -85,6 +85,15 @@ resource "google_project_iam_member" "gke_host_agent" {
   depends_on = [module.app]
 }
 
+# GKE lee la llave de la etiqueta segura de firewall (en el host) al crear los node pools; tagUser solo está en los valores.
+resource "google_project_iam_member" "gke_tag_viewer" {
+  project = var.host_project_id
+  role    = "roles/resourcemanager.tagViewer"
+  member  = local.gke_robot
+
+  depends_on = [module.app]
+}
+
 # --- Cuentas de servicio de cargas (mínimo privilegio) ---
 
 locals {
