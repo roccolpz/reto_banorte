@@ -22,5 +22,10 @@ skip-check:
   - CKV_GCP_65
   # Binary Authorization queda fuera del alcance de la entrega (ADR 0001).
   - CKV_GCP_66
-  # Logs de acceso por bucket: la auditoría se cubre con Data Access audit logs y el sink central de 1-org.
+  # Logs de acceso por bucket: la auditoría se cubre con Data Access audit logs (DATA_WRITE) y el sink central de 1-org.
   - CKV_GCP_62
+  # Audit config por proyecto: se configura una sola vez a nivel organización (1-org/logging.tf) y lo heredan todos.
+  - CKV2_GCP_5
+  # Bucket Lock de la auditoría: lo controla audit_retention_locked (true por defecto en el pipeline; false solo en
+  # la organización de prueba porque es irreversible, CONTRATO §8).
+  - CKV2_GCP_4

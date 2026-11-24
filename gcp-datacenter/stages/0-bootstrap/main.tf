@@ -56,6 +56,8 @@ locals {
       "roles/resourcemanager.folderViewer",
       "roles/accesscontextmanager.policyReader",
       "roles/securitycenter.notificationConfigViewer",
+      # Las etapas facturan sus llamadas a un proyecto (user_project_override); sin esto el plan de 2-security falla.
+      "roles/serviceusage.serviceUsageConsumer",
     ]
   }
   org_bindings = {
@@ -240,6 +242,13 @@ resource "google_billing_account_iam_member" "project_creators" {
   billing_account_id = var.billing_account
   role               = "roles/billing.user"
   member             = google_service_account.stage[each.key].member
+}
+
+# El plan de 0-bootstrap en los PR lee los bindings de la cuenta de facturación.
+resource "google_billing_account_iam_member" "plan_viewer" {
+  billing_account_id = var.billing_account
+  role               = "roles/billing.viewer"
+  member             = google_service_account.stage["plan"].member
 }
 
 # ---------------------------------------------------------------------------
