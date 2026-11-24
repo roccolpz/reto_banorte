@@ -30,9 +30,47 @@ resource "google_sql_database_instance" "primary" {
       ssl_mode        = local.ip_configuration.ssl_mode
     }
 
+    # Autenticación IAM y registro de auditoría (CIS para PostgreSQL). log_statement = "ddl": cambios de esquema sin
+    # el volumen de registrar cada consulta. Bloques estáticos para que Checkov los evalúe.
     database_flags {
       name  = "cloudsql.iam_authentication"
       value = "on"
+    }
+    database_flags {
+      name  = "cloudsql.enable_pgaudit"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_checkpoints"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_connections"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_disconnections"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_lock_waits"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_duration"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_hostname"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_min_error_statement"
+      value = "error"
+    }
+    database_flags {
+      name  = "log_statement"
+      value = "ddl"
     }
 
     backup_configuration {
@@ -79,9 +117,47 @@ resource "google_sql_database_instance" "replica" {
       ssl_mode        = local.ip_configuration.ssl_mode
     }
 
+    # Autenticación IAM y registro de auditoría (CIS para PostgreSQL). log_statement = "ddl": cambios de esquema sin
+    # el volumen de registrar cada consulta. Bloques estáticos para que Checkov los evalúe.
     database_flags {
       name  = "cloudsql.iam_authentication"
       value = "on"
+    }
+    database_flags {
+      name  = "cloudsql.enable_pgaudit"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_checkpoints"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_connections"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_disconnections"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_lock_waits"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_duration"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_hostname"
+      value = "on"
+    }
+    database_flags {
+      name  = "log_min_error_statement"
+      value = "error"
+    }
+    database_flags {
+      name  = "log_statement"
+      value = "ddl"
     }
   }
 }

@@ -96,7 +96,7 @@ Settings > Branches > Branch protection rules > `main`:
 |-------------|---------|-------|
 | Terraform | 1.17.2 | `ci.yml`, `.github/actions/tf-init` |
 | tflint | v0.66.0, ruleset google 0.41.0 | `ci.yml`, `.tflint.hcl` |
-| checkov | acción v12.1347.0 | `ci.yml`, `.checkov.yaml` |
+| checkov | acción v12.3139.0 (checkov 3.4.3) | `ci.yml`, `.checkov.yaml` |
 | conftest | v0.71.1 (SHA-256 verificado) | `.github/actions/setup-conftest` |
 
 Todas las acciones de terceros están fijadas a un commit SHA completo con la versión en un comentario. Para

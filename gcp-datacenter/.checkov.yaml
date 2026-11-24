@@ -42,6 +42,12 @@ skip-check:
   - CKV_GCP_69
   # La VM de onprem-sim no tiene service_account (ni la de defecto).
   - CKV_GCP_30
+  # Las VPC usan políticas de firewall de red (google_compute_network_firewall_policy*), que la regla no reconoce;
+  # solo cuenta google_compute_firewall.
+  - CKV2_GCP_18
+  # WIF de GitHub: la condición limita por assertion.repository (y por environment para prod), patrón recomendado
+  # por Google; la regla solo acepta una condición sobre assertion.sub.
+  - CKV_GCP_125
   # --- No aplica ---
   # Autenticación básica y certificados de cliente ya no existen en GKE; el acceso es por IAM.
   - CKV_GCP_19
