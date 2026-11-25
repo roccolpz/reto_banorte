@@ -218,15 +218,17 @@ module "memorystore" {
   labels     = var.labels
 }
 
-# --- Backup and DR: respaldo diario de Cloud SQL con 30 días de retención ---
+# --- Backup and DR: bóveda y plan diario de Cloud SQL con 30 días de retención (sin asociar, ADR 0023) ---
 
 module "backup_dr" {
   source = "../../../../modules/backup-dr"
   count  = local.enable_backup_dr ? 1 : 0
 
-  name          = local.name_data
-  project_id    = var.data_project_id
-  region        = var.primary_region
-  sql_instances = { primary = module.sql.instance_name }
+  name       = local.name_data
+  project_id = var.data_project_id
+  region     = var.primary_region
+  # Sin asociación: Cloud SQL usa CMEK y una bóveda con cifrado de Google no puede respaldarlo; el proveedor google 6.x
+  # no permite CMEK en la bóveda (llega en 7.x). Bóveda y plan quedan listos (ADR 0023).
+  sql_instances = {}
   labels        = var.labels
 }

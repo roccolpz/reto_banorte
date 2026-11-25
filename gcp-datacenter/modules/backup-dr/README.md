@@ -7,6 +7,9 @@ de la bóveda recibe `roles/backupdr.cloudSqlOperator` en el proyecto.
 Estos respaldos se suman a los respaldos automáticos y PITR de Cloud SQL (módulo `cloud-sql`) y a la réplica en
 `us-east4`: quedan en una bóveda aislada que ni un administrador del proyecto puede borrar antes de la retención.
 
+La bóveda usa cifrado de Google: con el proveedor `google` 6.x no se puede crear con CMEK, y GCP no respalda una
+instancia de Cloud SQL con CMEK en ella. Por eso `5-workloads` no asocia la instancia de prod (ADR 0023).
+
 Bóveda, plan e instancias deben estar en la misma región. Mientras la bóveda tenga respaldos dentro de la retención no se
 puede borrar: un `destroy` de prod falla hasta que venzan (ver [destroy-dev](../../docs/runbooks/destroy-dev.md)).
 
