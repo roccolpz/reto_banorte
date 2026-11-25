@@ -54,3 +54,12 @@ cualquiera con escritura, y CODEOWNERS se cumple con un solo dueño.
 - Con el ruleset, cada PR necesita 2 aprobaciones de personas distintas al autor y a quien hizo el último push.
 - Cambiar `attribute.prod_main` exige volver a aplicar `0-bootstrap` (manual, administrador).
 - Checklist de puesta en marcha: [runbooks/qa-approvers.md](../runbooks/qa-approvers.md).
+
+## Excepción temporal (2026-11-25)
+
+La variable de repositorio `QA_MIN_APPROVALS` baja el mínimo de aprobaciones de la puerta `qa-approval`; sin ella el
+mínimo sigue en 2. Se usa solo cuando no hay aprobadores de QA disponibles (p. ej. un despliegue nocturno de una sola
+persona) y se borra al terminar: `gh variable delete QA_MIN_APPROVALS`. Cada corrida con el mínimo reducido deja una
+advertencia en el resumen del workflow. Durante la excepción también se baja a 0 la revisión obligatoria del ruleset
+`main-protegida`, y se restaura al terminar.
+
