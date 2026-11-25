@@ -18,7 +18,7 @@ Se agregan cuatro módulos y se conectan en `5-workloads/modules/env`:
 | Cloud Run | `modules/cloud-run` | dev, qa, prod | `min_instances = 0`, ingreso solo por el balanceador, SA dedicada `cloud-run` |
 | Balanceador HTTPS global + Cloud Armor | `modules/load-balancer` | prod | `EXTERNAL_MANAGED`, certificado administrado en `<ip>.nip.io`, WAF OWASP (`sqli`, `xss`, `lfi`, `rce`) y Log4j |
 | Memorystore for Redis | `modules/memorystore` | prod | `BASIC` 1 GB por acceso a servicios privados, AUTH y TLS |
-| Backup and DR Service | `modules/backup-dr` | prod | bóveda + plan diario de Cloud SQL con 30 días de retención forzada |
+| Backup and DR Service | `modules/backup-dr` | prod | bóveda + plan diario de Cloud SQL con 30 días de retención forzada; sin asociar a la instancia (ver desviaciones) |
 
 `enable_load_balancer`, `enable_memorystore` y `enable_backup_dr` (null = solo prod) permiten encenderlos en otro
 entorno.
@@ -43,6 +43,7 @@ Además:
 | Cloud IDS | Cerca de 1.5 USD por hora por endpoint, más de 1,000 USD al mes | Firewall jerárquico, políticas de firewall de red con etiquetas seguras, Cloud Armor y flow logs |
 | Balanceador interno | Ninguna carga interna lo necesita todavía: GKE expone servicios con su propio balanceador interno si hace falta | Se agrega como un módulo aparte cuando exista un consumidor |
 | Egreso de Cloud Run a la VPC (Direct VPC) | El servicio de ejemplo no llama a recursos privados; pedirlo obliga a dar `networkUser` al agente de Cloud Run en cada subred | Activarlo junto con la primera carga que use Cloud SQL o Redis desde Cloud Run |
+| Asociar Cloud SQL al plan de Backup and DR | Cloud SQL usa CMEK y GCP no respalda una instancia CMEK en una bóveda con cifrado de Google (`BackupVault with Google-managed encryption do not support backups of Cloud SQL instances with Customer-managed encryption`). El proveedor `google` 6.x no tiene `encryption_config` en `google_backup_dr_backup_vault` (llega en 7.x) y el cifrado de una bóveda no se cambia después de crearla | Cloud SQL conserva sus respaldos automáticos, PITR y la réplica en us-east4. Al subir el proveedor a 7.x: llave `backupdr` en 2-security, bóveda nueva con CMEK y `sql_instances = { primary = ... }` en `5-workloads/modules/env` |
 | Cloud Interconnect | Opcional en la especificación; no hay sitio físico (ADR 0005-e) | HA VPN con BGP |
 
 ## Consecuencias
