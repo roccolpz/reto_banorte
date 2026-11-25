@@ -16,13 +16,14 @@ resource "google_backup_dr_backup_vault" "this" {
 }
 
 resource "google_backup_dr_backup_plan" "sql" {
-  backup_plan_id     = "${var.name}-sql-daily"
-  project            = var.project_id
-  location           = var.region
-  resource_type      = "sqladmin.googleapis.com/Instance"
-  backup_vault       = google_backup_dr_backup_vault.this.id
-  description        = "Respaldo diario de Cloud SQL, ${var.retention_days} días"
-  log_retention_days = var.retention_days
+  backup_plan_id = "${var.name}-sql-daily"
+  project        = var.project_id
+  location       = var.region
+  resource_type  = "sqladmin.googleapis.com/Instance"
+  backup_vault   = google_backup_dr_backup_vault.this.id
+  description    = "Respaldo diario de Cloud SQL, ${var.retention_days} días"
+  # La API exige log_retention_days < backup_retention_days de la regla diaria.
+  log_retention_days = var.log_retention_days
 
   backup_rules {
     rule_id               = "daily"

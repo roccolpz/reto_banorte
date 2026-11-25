@@ -32,6 +32,11 @@ run "diario_con_retencion_de_30_dias" {
   }
 
   assert {
+    condition     = google_backup_dr_backup_plan.sql.log_retention_days < google_backup_dr_backup_plan.sql.backup_rules[0].backup_retention_days
+    error_message = "La API exige log_retention_days < backup_retention_days."
+  }
+
+  assert {
     condition     = google_backup_dr_backup_plan_association.sql["primary"].resource == "projects/acme-prod-data-ab12/instances/acme-prod-data-sql-ab12"
     error_message = "La instancia de Cloud SQL queda asociada al plan."
   }
@@ -50,4 +55,14 @@ run "rechaza_retencion_invalida" {
   }
 
   expect_failures = [var.retention_days]
+}
+
+run "rechaza_logs_iguales_a_la_retencion" {
+  command = plan
+
+  variables {
+    log_retention_days = 30
+  }
+
+  expect_failures = [var.log_retention_days]
 }

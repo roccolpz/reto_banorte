@@ -26,8 +26,19 @@ variable "retention_days" {
   default     = 30
 
   validation {
-    condition     = var.retention_days >= 1 && var.retention_days <= 90
-    error_message = "retention_days debe estar entre 1 y 90."
+    condition     = var.retention_days >= 2 && var.retention_days <= 90
+    error_message = "retention_days debe estar entre 2 y 90."
+  }
+}
+
+variable "log_retention_days" {
+  description = "Días que se guardan los logs de transacciones de Cloud SQL (PITR desde la bóveda). Debe ser menor que retention_days."
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = var.log_retention_days >= 1 && var.log_retention_days < var.retention_days
+    error_message = "log_retention_days debe ser al menos 1 y menor que retention_days."
   }
 }
 
