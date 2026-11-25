@@ -6,6 +6,7 @@ suffix          = "a1b2"
 # prefix            = "acme"
 # region            = "us-central1"
 # github_repository = "roccolpz/reto_banorte"
+# budget_amount     = 300 # USD al mes; alertas al 50, 90 y 100 % y al pronóstico del 100 %
 
 labels = {
   app         = "landing-zone"

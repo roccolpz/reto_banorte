@@ -4,10 +4,14 @@ locals {
   enable_dr_replica  = coalesce(var.enable_dr_replica, var.env == "prod")
   bucket_dual_region = coalesce(var.bucket_dual_region, var.env == "prod")
   enable_dr_cluster  = coalesce(var.enable_dr_cluster, var.env == "prod")
-  name_app           = "${var.prefix}-${var.env}-app"
-  database_version   = "POSTGRES_18"
-  name_data          = "${var.prefix}-${var.env}-data"
-  subnet             = var.subnets[var.primary_region]
+  # Balanceador con Cloud Armor, Memorystore y Backup and DR: solo prod por costo (ADR 0023).
+  enable_load_balancer = coalesce(var.enable_load_balancer, var.env == "prod")
+  enable_memorystore   = coalesce(var.enable_memorystore, var.env == "prod")
+  enable_backup_dr     = coalesce(var.enable_backup_dr, var.env == "prod")
+  name_app             = "${var.prefix}-${var.env}-app"
+  database_version     = "POSTGRES_18"
+  name_data            = "${var.prefix}-${var.env}-data"
+  subnet               = var.subnets[var.primary_region]
 
   # Tamaños por entorno (R12); gke_node_pools y sql_tier explícitos los reemplazan.
   sizing = {
@@ -169,4 +173,57 @@ module "observability" {
   enable_replica_lag_alert = local.enable_dr_replica
   uptime_check_host        = var.uptime_check_host
   labels                   = var.labels
+}
+
+# --- Cloud Run detrás del balanceador (escala a cero) ---
+
+module "cloud_run" {
+  source = "../../../../modules/cloud-run"
+
+  name                  = "${local.name_app}-run"
+  project_id            = var.app_project_id
+  region                = var.primary_region
+  service_account_email = var.service_accounts["run"]
+  deletion_protection   = var.deletion_protection
+  labels                = var.labels
+}
+
+# --- Balanceador HTTPS global con Cloud Armor (OWASP) ---
+
+module "load_balancer" {
+  source = "../../../../modules/load-balancer"
+  count  = local.enable_load_balancer ? 1 : 0
+
+  name              = "${local.name_app}-lb"
+  project_id        = var.app_project_id
+  region            = module.cloud_run.region
+  cloud_run_service = module.cloud_run.service_name
+  domain            = var.lb_domain
+  labels            = var.labels
+}
+
+# --- Memorystore for Redis en el proyecto de datos ---
+
+module "memorystore" {
+  source = "../../../../modules/memorystore"
+  count  = local.enable_memorystore ? 1 : 0
+
+  name       = "${local.name_data}-redis"
+  project_id = var.data_project_id
+  region     = var.primary_region
+  network    = replace(var.network_self_link, "https://www.googleapis.com/compute/v1/", "")
+  labels     = var.labels
+}
+
+# --- Backup and DR: respaldo diario de Cloud SQL con 30 días de retención ---
+
+module "backup_dr" {
+  source = "../../../../modules/backup-dr"
+  count  = local.enable_backup_dr ? 1 : 0
+
+  name          = local.name_data
+  project_id    = var.data_project_id
+  region        = var.primary_region
+  sql_instances = { primary = module.sql.instance_name }
+  labels        = var.labels
 }

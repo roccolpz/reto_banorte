@@ -19,6 +19,6 @@ output "data_project_number" {
 }
 
 output "service_accounts" {
-  description = "Cuentas de servicio de cargas: gke_nodes, app_workload, vm → email."
+  description = "Cuentas de servicio de cargas: gke_nodes, app_workload, vm, run → email."
   value       = { for k, sa in google_service_account.workloads : k => sa.email }
 }

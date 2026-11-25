@@ -24,6 +24,15 @@ cambia `local.env`.
   entra al metrics scope; el hub y la alerta de túneles VPN solo en prod, para no repetir la alerta por entorno. La
   alerta de retraso de réplica existe donde hay réplica. `uptime_check_host` (null = sin uptime check) vigila el host
   público de la aplicación.
+- Cloud Run en el proyecto de app (`modules/cloud-run`), todos los entornos: `<prefix>-<env>-app-run`, escala a cero,
+  SA `run`, ingreso solo por el balanceador.
+- Balanceador HTTPS global con Cloud Armor OWASP delante de Cloud Run (`modules/load-balancer`, `enable_load_balancer`,
+  null = solo prod). Sin `lb_domain`, el certificado administrado usa `<ip>.nip.io` (salidas `lb_ip_address` y
+  `lb_domain`).
+- Memorystore for Redis `BASIC` 1 GB en el proyecto de datos (`modules/memorystore`, `enable_memorystore`, null = solo
+  prod), por el mismo acceso a servicios privados que Cloud SQL.
+- Backup and DR (`modules/backup-dr`, `enable_backup_dr`, null = solo prod): bóveda y plan diario de la instancia
+  primaria de Cloud SQL con 30 días de retención forzada (ADR 0023).
 - `deletion_protection`: null = true solo en prod. En false el bucket también se puede vaciar al destruir.
 
 Lee el estado de `2-security`, `3-networks/hub`, `3-networks/<env>` y `4-projects/<env>`. La llave de las etiquetas

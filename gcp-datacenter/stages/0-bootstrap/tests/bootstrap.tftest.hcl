@@ -11,6 +11,11 @@ mock_provider "google" {
   }
 }
 
+# Proveedor del presupuesto (budget.tf).
+mock_provider "google" {
+  alias = "billing"
+}
+
 variables {
   org_id          = "000000000000"
   billing_account = "000000-000000-000000"
@@ -173,4 +178,23 @@ run "falla_con_sufijo_invalido" {
   }
 
   expect_failures = [var.suffix]
+}
+
+run "presupuesto_mensual_con_alertas" {
+  command = plan
+
+  assert {
+    condition     = google_billing_budget.monthly.amount[0].specified_amount[0].units == "300"
+    error_message = "Presupuesto mensual de 300 por defecto."
+  }
+
+  assert {
+    condition     = length(google_billing_budget.monthly.threshold_rules) == 4
+    error_message = "Alertas al 50, 90 y 100 % reales y al 100 % pronosticado."
+  }
+
+  assert {
+    condition     = contains(local.seed_apis, "billingbudgets.googleapis.com")
+    error_message = "La semilla habilita la API de presupuestos."
+  }
 }

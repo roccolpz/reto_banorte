@@ -18,6 +18,7 @@ variables {
     gke_nodes    = "gke-nodes@acme-dev-app-ab12.iam.gserviceaccount.com"
     app_workload = "app-workload@acme-dev-app-ab12.iam.gserviceaccount.com"
     vm           = "vm-instances@acme-dev-app-ab12.iam.gserviceaccount.com"
+    run          = "cloud-run@acme-dev-app-ab12.iam.gserviceaccount.com"
   }
   kms_keys = {
     storage = "projects/acme-common-security-ab12/locations/us-central1/keyRings/kr/cryptoKeys/storage"
@@ -90,6 +91,20 @@ run "dev_sin_cluster_dr_ni_alertas_del_hub" {
   assert {
     condition     = module.observability.uptime_check_id == null
     error_message = "Sin uptime_check_host no se crea uptime check."
+  }
+}
+
+run "dev_cloud_run_sin_servicios_de_prod" {
+  command = plan
+
+  assert {
+    condition     = output.cloud_run_service == "acme-dev-app-run" && module.cloud_run.region == "us-central1"
+    error_message = "Todos los entornos tienen Cloud Run <prefix>-<env>-app-run."
+  }
+
+  assert {
+    condition     = length(module.load_balancer) == 0 && length(module.memorystore) == 0 && length(module.backup_dr) == 0
+    error_message = "dev no crea balanceador, Memorystore ni Backup and DR por default (ADR 0023)."
   }
 }
 
@@ -198,6 +213,16 @@ run "prod_regional_ha_dr" {
   assert {
     condition     = local.gke_node_pools.default.machine_type == "e2-standard-2" && local.sql_tier == "db-custom-2-7680"
     error_message = "prod usa nodos e2-standard-2 y Cloud SQL db-custom-2-7680 (R12)."
+  }
+
+  assert {
+    condition     = length(module.load_balancer) == 1 && length(module.memorystore) == 1 && length(module.backup_dr) == 1
+    error_message = "prod crea balanceador con Cloud Armor, Memorystore y Backup and DR (ADR 0023)."
+  }
+
+  assert {
+    condition     = module.memorystore[0].instance_name == "acme-prod-data-redis"
+    error_message = "Memorystore va en el proyecto de datos con el patrón <prefix>-<env>-data-redis."
   }
 }
 

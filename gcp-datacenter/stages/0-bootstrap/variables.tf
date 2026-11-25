@@ -70,3 +70,26 @@ variable "github_repository" {
     error_message = "github_repository debe tener el formato owner/repositorio."
   }
 }
+
+variable "budget_amount" {
+  description = "Presupuesto mensual de la cuenta de facturación, en unidades de budget_currency."
+  type        = number
+  default     = 300
+
+  validation {
+    condition     = var.budget_amount > 0
+    error_message = "budget_amount debe ser mayor que cero."
+  }
+}
+
+variable "budget_currency" {
+  description = "Moneda del presupuesto (ISO 4217); debe ser la de la cuenta de facturación."
+  type        = string
+  default     = "USD"
+}
+
+variable "budget_thresholds" {
+  description = "Umbrales de gasto real que disparan alerta (1.0 = 100 %)."
+  type        = list(number)
+  default     = [0.5, 0.9, 1.0]
+}

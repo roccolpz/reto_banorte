@@ -176,6 +176,12 @@ locals {
         { scope = "folder", key = e, role = "roles/storage.admin" },
         { scope = "folder", key = e, role = "roles/compute.networkUser" },
         { scope = "folder", key = e, role = "roles/monitoring.editor" },
+        # Cloud Run, Memorystore y Backup and DR (ADR 0023); securityAdmin crea la política de Cloud Armor
+        # (loadBalancerAdmin, que da 4-projects, solo la usa).
+        { scope = "folder", key = e, role = "roles/run.admin" },
+        { scope = "folder", key = e, role = "roles/redis.admin" },
+        { scope = "folder", key = e, role = "roles/backupdr.admin" },
+        { scope = "folder", key = e, role = "roles/compute.securityAdmin" },
         # 5-workloads busca por nombre la tag key de firewall en el net-host (ADR 0019-i).
         { scope = "project", key = "net-host-${e}", role = "roles/resourcemanager.tagViewer" },
         # Agregar net_hub al metrics scope del proyecto de app exige monitoring.metricsScopes.link también en net_hub;
@@ -244,4 +250,20 @@ resource "google_storage_bucket_iam_member" "audit_readers" {
   bucket = google_storage_bucket.audit.name
   role   = each.value.role
   member = each.value.member
+}
+
+# 5-workloads da roles/backupdr.cloudSqlOperator a la cuenta de la bóveda de Backup and DR, que solo existe al crearla:
+# projectIamAdmin limitado por condición a ese único rol (ADR 0023).
+resource "google_folder_iam_member" "workloads_backupdr_grant" {
+  for_each = toset(local.envs)
+
+  folder = google_folder.this[each.key].name
+  role   = "roles/resourcemanager.projectIamAdmin"
+  member = "serviceAccount:${local.stage_sas["5-workloads-${each.key}"]}"
+
+  condition {
+    title       = "solo-backupdr-cloudsql"
+    description = "Solo puede otorgar o quitar roles/backupdr.cloudSqlOperator"
+    expression  = "api.getAttribute('iam.googleapis.com/modifiedGrantsByRole', []).hasOnly(['roles/backupdr.cloudSqlOperator'])"
+  }
 }

@@ -61,6 +61,10 @@ credencial). Los valores salen de `0-bootstrap` ([bootstrap-first-apply](runbook
 | `BINAUTHZ_KEY_VERSION` | Salida `binauthz_key_version` de 2-security (`projects/.../cryptoKeyVersions/1`) |
 | `QA_APPROVERS` | Logins de GitHub de los aprobadores de QA, separados por coma (p. ej. `ana,beto`). Mínimo 2. Vacía, `qa-approval` bloquea todo push que toque prod (ADR 0021-k, [qa-approvers](runbooks/qa-approvers.md)) |
 
+Secreto opcional (Settings > Secrets and variables > Actions > Secrets): `INFRACOST_API_KEY`, clave gratuita de
+Infracost. Con él, el comentario del plan de cada PR incluye el costo mensual estimado; sin él, ese paso se omite
+(ADR 0023).
+
 GitHub guarda los nombres de variable en mayúsculas; los workflows los pasan a Terraform con el nombre en minúsculas.
 No se usan llaves JSON ni tokens personales (ADR 0004-e).
 
@@ -142,6 +146,7 @@ Detalle de las capas de prueba: [tests/README.md](../tests/README.md).
 - [Túnel VPN o BGP caído](runbooks/vpn-down.md)
 - [Failover de Cloud SQL a us-east4](runbooks/dr-failover-cloudsql.md)
 - [Rotar un secreto o una llave](runbooks/rotate-secret.md)
+- [Rotación de llaves KMS](runbooks/rotacion-llaves-kms.md)
 - [Destruir dev](runbooks/destroy-dev.md)
 - [Responder a un issue de drift](runbooks/drift-response.md)
 
@@ -152,3 +157,5 @@ Detalle de las capas de prueba: [tests/README.md](../tests/README.md).
 - [ADR 0004-e: Workload Identity Federation sin llaves](adr/0004-e-wif-sin-llaves.md)
 - [ADR 0005-e: on-prem simulado con HA VPN](adr/0005-e-onprem-simulado-ha-vpn.md)
 - [ADR 0006-e: VPC Service Controls en dry-run](adr/0006-e-vpc-sc-dry-run.md)
+- [ADR 0023: servicios que faltaban y desviaciones por costo](adr/0023-servicios-faltantes-y-desviaciones.md)
+- [ADR 0024: versionado de módulos con tags](adr/0024-versionado-de-modulos-con-tags.md)

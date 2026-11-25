@@ -87,6 +87,8 @@ locals {
   seed_apis = [
     "accesscontextmanager.googleapis.com",
     "cloudbilling.googleapis.com",
+    # Presupuesto de la cuenta de facturación (budget.tf).
+    "billingbudgets.googleapis.com",
     # 4-projects-prod lee y edita el attestor y la política de Binary Authorization facturando a la semilla.
     "binaryauthorization.googleapis.com",
     "cloudkms.googleapis.com",

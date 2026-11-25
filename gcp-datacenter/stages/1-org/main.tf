@@ -55,6 +55,9 @@ locals {
     "monitoring.googleapis.com",
     "sqladmin.googleapis.com",
     "storage.googleapis.com",
+    "run.googleapis.com",
+    "redis.googleapis.com",
+    "backupdr.googleapis.com",
   ]
 
   common_project_defs = var.compact_projects ? {

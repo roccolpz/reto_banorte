@@ -28,6 +28,8 @@ nunca está en el código ni en el estado.
 
 ## B. Llaves KMS
 
+Procedimiento completo, con el recifrado por servicio: [rotacion-llaves-kms.md](rotacion-llaves-kms.md).
+
 Las llaves de `2-security` rotan solas cada 90 días (`rotation_period`). La rotación crea una versión primaria nueva;
 los datos ya cifrados siguen legibles con las versiones anteriores, que no se deshabilitan.
 

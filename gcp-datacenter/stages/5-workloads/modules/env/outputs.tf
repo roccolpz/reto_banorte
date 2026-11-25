@@ -27,3 +27,28 @@ output "mig_name" {
   description = "Nombre del grupo de instancias administrado."
   value       = module.mig.mig_name
 }
+
+output "cloud_run_service" {
+  description = "Nombre del servicio de Cloud Run."
+  value       = module.cloud_run.service_name
+}
+
+output "lb_ip_address" {
+  description = "IP pública del balanceador; null si no se crea (dev y qa)."
+  value       = one(module.load_balancer[*].ip_address)
+}
+
+output "lb_domain" {
+  description = "Dominio HTTPS del balanceador; null si no se crea."
+  value       = one(module.load_balancer[*].domain)
+}
+
+output "redis_host" {
+  description = "IP privada de Memorystore; null si no se crea."
+  value       = one(module.memorystore[*].host)
+}
+
+output "backup_vault_id" {
+  description = "Bóveda de Backup and DR; null si no se crea."
+  value       = one(module.backup_dr[*].vault_id)
+}
