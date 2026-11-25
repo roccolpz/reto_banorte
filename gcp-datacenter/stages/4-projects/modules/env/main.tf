@@ -36,6 +36,7 @@ module "app" {
     "iam.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
+    "run.googleapis.com",
   ]
 }
 
@@ -55,6 +56,8 @@ module "data" {
     "storage.googleapis.com",
     "logging.googleapis.com",
     "monitoring.googleapis.com",
+    "redis.googleapis.com",
+    "backupdr.googleapis.com",
   ]
 }
 
@@ -101,6 +104,7 @@ locals {
     gke_nodes    = { account_id = "gke-nodes", display_name = "Nodos GKE ${var.env}" }
     app_workload = { account_id = "app-workload", display_name = "Workload Identity de la app ${var.env}" }
     vm           = { account_id = "vm-instances", display_name = "VM del MIG ${var.env}" }
+    run          = { account_id = "cloud-run", display_name = "Servicio de Cloud Run ${var.env}" }
   }
 
   workload_roles = {
@@ -117,6 +121,9 @@ locals {
       data = ["roles/cloudsql.client", "roles/cloudsql.instanceUser"]
     }
     vm = {
+      app = ["roles/logging.logWriter", "roles/monitoring.metricWriter"]
+    }
+    run = {
       app = ["roles/logging.logWriter", "roles/monitoring.metricWriter"]
     }
   }
@@ -239,6 +246,7 @@ locals {
   deployer_sa_bindings = {
     gke_nodes    = "roles/iam.serviceAccountUser"
     vm           = "roles/iam.serviceAccountUser"
+    run          = "roles/iam.serviceAccountUser"
     app_workload = "roles/iam.serviceAccountAdmin"
   }
 }

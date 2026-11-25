@@ -124,12 +124,12 @@ variable "uptime_check_host" {
 }
 
 variable "service_accounts" {
-  description = "Cuentas de servicio de 4-projects: gke_nodes, app_workload, vm → email."
+  description = "Cuentas de servicio de 4-projects: gke_nodes, app_workload, vm y, si existe, run → email."
   type        = map(string)
 
   validation {
     condition     = alltrue([for k in ["gke_nodes", "app_workload", "vm"] : contains(keys(var.service_accounts), k)])
-    error_message = "service_accounts debe incluir gke_nodes, app_workload y vm."
+    error_message = "service_accounts debe incluir gke_nodes, app_workload y vm (run es opcional: sin ella no hay Cloud Run)."
   }
 }
 
@@ -184,6 +184,30 @@ variable "bucket_dual_region" {
     condition     = !coalesce(var.bucket_dual_region, var.env == "prod") || contains(keys(var.kms_keys), "storage-us")
     error_message = "bucket_dual_region requiere la llave storage-us en ubicación us (ADR 0002-d)."
   }
+}
+
+variable "enable_load_balancer" {
+  description = "Balanceador HTTPS global con Cloud Armor delante de Cloud Run. null: true solo en prod."
+  type        = bool
+  default     = null
+}
+
+variable "lb_domain" {
+  description = "Dominio del certificado del balanceador. null: <ip>.nip.io."
+  type        = string
+  default     = null
+}
+
+variable "enable_memorystore" {
+  description = "Memorystore for Redis BASIC de 1 GB en el proyecto de datos. null: true solo en prod."
+  type        = bool
+  default     = null
+}
+
+variable "enable_backup_dr" {
+  description = "Bóveda y plan diario de Backup and DR (30 días) para Cloud SQL. null: true solo en prod."
+  type        = bool
+  default     = null
 }
 
 variable "deletion_protection" {

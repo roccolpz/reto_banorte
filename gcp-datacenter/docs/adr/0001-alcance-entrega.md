@@ -32,3 +32,9 @@ On-premises se simula con una VPC `onprem-sim` en GCP conectada por HA VPN, porq
 - No se demuestran: SCC sin hallazgos críticos o altos, y el simulacro de DR dentro del RTO.
 - El código se valida con `terraform validate` y `terraform test` con proveedores simulados. El despliegue real en GCP
   lo ejecuta quien tenga acceso a la organización.
+
+## Actualización (2026-11-24)
+
+ADR 0023 agrega el balanceador HTTPS con Cloud Armor, Cloud Run, Memorystore, Backup and DR, Infracost y el presupuesto
+con alertas. Filestore, Cloud IDS y Cloud Interconnect quedan como desviaciones documentadas en ese ADR. Los módulos se
+versionan con tags (ADR 0024). La llave de rotación de KMS tiene su runbook (`rotacion-llaves-kms.md`).

@@ -42,8 +42,8 @@ run "proyectos_iam_y_perimetro_dry_run" {
   }
 
   assert {
-    condition     = keys(output.service_accounts) == ["app_workload", "gke_nodes", "vm"]
-    error_message = "service_accounts debe tener gke_nodes, app_workload y vm."
+    condition     = keys(output.service_accounts) == ["app_workload", "gke_nodes", "run", "vm"]
+    error_message = "service_accounts debe tener gke_nodes, app_workload, vm y run."
   }
 
   assert {

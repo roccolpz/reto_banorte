@@ -2,6 +2,7 @@
 # Variables de GitHub (Settings > Secrets and variables > Actions > Variables), ver gcp-datacenter/docs/README.md:
 #   WIF_PROVIDER, TF_STATE_BUCKET, TF_SA_PLAN, TF_VAR_ORG_ID, TF_VAR_BILLING_ACCOUNT, TF_VAR_SUFFIX,
 #   TF_LABELS_JSON, NOTIFICATION_EMAIL
+# Secreto opcional: INFRACOST_API_KEY (clave gratuita de Infracost). Sin él se omite la estimación de costo del plan.
 name: ci
 
 on:
@@ -244,6 +245,7 @@ jobs:
       TF_VAR_notification_email: ${{ vars.NOTIFICATION_EMAIL }}
       # Igual que _tf-apply.yml: sin esto el plan de 1-org mostraría quitar el bloqueo de auditoría.
       TF_VAR_audit_retention_locked: ${{ vars.AUDIT_RETENTION_LOCKED || 'true' }}
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -274,6 +276,17 @@ jobs:
           terraform -chdir="$ROOT" plan -input=false -lock=false -no-color -out=tfplan | tee "$ROOT/plan.txt"
           terraform -chdir="$ROOT" show -json tfplan >"$ROOT/plan.json"
 
+      # Costo mensual estimado del plan (Pipeline, paso 3). Informativo: no bloquea el PR.
+      - if: steps.plan.outcome == 'success' && env.INFRACOST_API_KEY != ''
+        uses: infracost/actions/setup@e9d6e6cd65e168e76b0de50ff9957d2fe8bb1832 # v3.0.1
+        with:
+          api-key: ${{ env.INFRACOST_API_KEY }}
+
+      - id: infracost
+        if: steps.plan.outcome == 'success' && env.INFRACOST_API_KEY != ''
+        continue-on-error: true
+        run: infracost breakdown --path "$ROOT/plan.json" --no-color | tee "$ROOT/infracost.txt"
+
       - if: steps.plan.outcome == 'success'
         uses: ./.github/actions/setup-conftest
 
@@ -296,6 +309,8 @@ jobs:
             const cut = (s, n) => (s.length > n ? s.slice(0, n) + '\n... (truncado, ver el log del job)' : s);
             const plan = read(`${root}/plan.txt`);
             const policy = read(`${root}/conftest.txt`);
+            const cost = read(`${root}/infracost.txt`);
+            const total = (cost.match(/OVERALL TOTAL\s+(\S+)/) || [null, cost ? '(sin total)' : 'omitido (sin INFRACOST_API_KEY)'])[1];
             const summary = (plan.match(/^(Plan: .*|No changes\..*)$/m) || ['(sin resumen)'])[0];
             const icon = (o) => (o === 'success' ? 'ok' : o === 'skipped' || o === '' ? 'omitido' : 'FALLA');
             const marker = `<!-- tf-plan:${root} -->`;
@@ -305,12 +320,20 @@ jobs:
               `### Plan \`${root}\``,
               `- Plan: **${icon(process.env.PLAN_OUTCOME)}**. ${summary}`,
               `- Políticas (conftest): **${icon(process.env.POLICY_OUTCOME)}**`,
+              `- Costo mensual estimado (Infracost): **${total}**`,
               `- [Ejecución](${run})`,
               '',
               '<details><summary>Salida del plan</summary>',
               '',
               '```text',
               cut(plan, 55000),
+              '```',
+              '</details>',
+              '',
+              '<details><summary>Infracost</summary>',
+              '',
+              '```text',
+              cut(cost, 10000),
               '```',
               '</details>',
               '',

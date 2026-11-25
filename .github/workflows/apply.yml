@@ -87,8 +87,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           QA_APPROVERS: ${{ vars.QA_APPROVERS }}
-          QA_MIN_APPROVALS: "2"
-        run: bash gcp-datacenter/scripts/check-qa-approvals.sh "$GITHUB_REPOSITORY" "$GITHUB_SHA"
+          # Excepción temporal (ADR 0021-k): la variable QA_MIN_APPROVALS baja el mínimo; sin ella son 2.
+          QA_MIN_APPROVALS: ${{ vars.QA_MIN_APPROVALS || '2' }}
+        run: |
+          if [ "$QA_MIN_APPROVALS" -lt 2 ]; then
+            echo "::warning::puerta de QA relajada: QA_MIN_APPROVALS=$QA_MIN_APPROVALS (excepción temporal, ADR 0021-k)"
+            echo "⚠️ Puerta de QA relajada a $QA_MIN_APPROVALS aprobación(es)" >>"$GITHUB_STEP_SUMMARY"
+          fi
+          bash gcp-datacenter/scripts/check-qa-approvals.sh "$GITHUB_REPOSITORY" "$GITHUB_SHA"
 
   # Binary Authorization de prod (ADR 0022-k): firma las imágenes de release/prod-images.txt con el attestor
   # qa-approved. Corre solo después de qa-approval y en el environment prod: la SA attestor-prod solo se impersona ahí
