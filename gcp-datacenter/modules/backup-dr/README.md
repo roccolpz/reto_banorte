@@ -32,7 +32,8 @@ Ejemplo completo en [examples/basic](examples/basic/main.tf).
 | project_id | Proyecto de la bóveda y de las instancias. | `string` | n/a | sí |
 | region | Región (la de las instancias). | `string` | `"us-central1"` | no |
 | sql_instances | Llave → nombre de instancia de Cloud SQL. | `map(string)` | `{}` | no |
-| retention_days | Retención en días (1 a 90). | `number` | `30` | no |
+| retention_days | Retención en días (2 a 90). | `number` | `30` | no |
+| log_retention_days | Días de logs de transacciones de Cloud SQL; menor que `retention_days`. | `number` | `7` | no |
 | backup_window_start_hour | Inicio de la ventana diaria de 4 horas. | `number` | `2` | no |
 | time_zone | Zona horaria de la ventana. | `string` | `"America/Mexico_City"` | no |
 | labels | Etiquetas obligatorias. | `map(string)` | n/a | sí |
