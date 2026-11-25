@@ -72,9 +72,9 @@ variable "github_repository" {
 }
 
 variable "budget_amount" {
-  description = "Presupuesto mensual de la cuenta de facturación, en unidades de budget_currency."
+  description = "Presupuesto mensual de la cuenta de facturación, en unidades de budget_currency (6000 MXN ≈ 300 USD)."
   type        = number
-  default     = 300
+  default     = 6000
 
   validation {
     condition     = var.budget_amount > 0
@@ -83,9 +83,9 @@ variable "budget_amount" {
 }
 
 variable "budget_currency" {
-  description = "Moneda del presupuesto (ISO 4217); debe ser la de la cuenta de facturación."
+  description = "Moneda del presupuesto (ISO 4217); debe ser la de la cuenta de facturación (la del laboratorio está en MXN)."
   type        = string
-  default     = "USD"
+  default     = "MXN"
 }
 
 variable "budget_thresholds" {
