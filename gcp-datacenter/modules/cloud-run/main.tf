@@ -33,4 +33,10 @@ resource "google_cloud_run_v2_service" "this" {
       }
     }
   }
+
+  # La API llena un bloque scaling a nivel servicio (min 0, manual 0) que no está en la configuración: sin esto cada
+  # plan propone quitarlo y la prueba de humo de dev (plan sin cambios) falla. El escalado real va en template.scaling.
+  lifecycle {
+    ignore_changes = [scaling]
+  }
 }
