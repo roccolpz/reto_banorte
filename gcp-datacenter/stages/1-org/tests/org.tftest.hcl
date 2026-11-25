@@ -168,6 +168,7 @@ run "roles_a_medida_y_tags_seguros" {
       kms_key_iam_admin   = "organizations/000000000000/roles/kms_key_iam_admin"
       tag_value_iam_admin = "organizations/000000000000/roles/tag_value_iam_admin"
       attestor_iam_admin  = "organizations/000000000000/roles/attestor_iam_admin"
+      redis_auth_reader   = "organizations/000000000000/roles/redis_auth_reader"
     }
     error_message = "custom_role_ids expone los tres roles a medida como organizations/<id>/roles/<nombre> (CONTRATO §6)."
   }

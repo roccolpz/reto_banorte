@@ -85,6 +85,12 @@ locals {
       title       = "Binary Authorization attestor IAM admin"
       permissions = ["binaryauthorization.attestors.get", "binaryauthorization.attestors.getIamPolicy", "binaryauthorization.attestors.setIamPolicy"]
     }
+    # El refresh de Memorystore con AUTH lee el AUTH string; roles/viewer no lo incluye y sin él falla el plan de los PR
+    # y el drift. El valor ya está en el estado que la SA de plan puede leer: no expone nada nuevo (ADR 0023).
+    redis_auth_reader = {
+      title       = "Memorystore AUTH string reader"
+      permissions = ["redis.instances.getAuthString"]
+    }
   }
   # Nombre armado aquí y no leído del recurso: las llaves de for_each deben conocerse en el plan.
   custom_role_ids = { for k, _ in local.custom_roles : k => "${local.org}/roles/${k}" }
@@ -107,6 +113,7 @@ locals {
   # Roles de las SAs de etapa. 1-org y plan reciben los suyos en 0-bootstrap.
   stage_sa_roles = merge(
     {
+      plan = [for e in local.envs : { scope = "folder", key = e, role = local.custom_role_ids["redis_auth_reader"] }]
       "2-security" = [
         { scope = "org", key = "org", role = "roles/accesscontextmanager.policyAdmin" },
         { scope = "project", key = "security", role = "roles/cloudkms.admin" },
@@ -232,6 +239,8 @@ resource "google_folder_iam_member" "this" {
   folder = google_folder.this[each.value.key].name
   role   = each.value.role
   member = each.value.member
+
+  depends_on = [google_organization_iam_custom_role.this]
 }
 
 resource "google_project_iam_member" "this" {
