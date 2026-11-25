@@ -35,7 +35,8 @@ resource "google_backup_dr_backup_plan" "sql" {
 
       backup_window {
         start_hour_of_day = var.backup_window_start_hour
-        end_hour_of_day   = var.backup_window_start_hour + 4
+        # La API exige una ventana de al menos 6 horas para respaldos diarios.
+        end_hour_of_day = var.backup_window_start_hour + 6
       }
     }
   }
