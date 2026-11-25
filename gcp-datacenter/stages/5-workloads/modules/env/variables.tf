@@ -124,12 +124,12 @@ variable "uptime_check_host" {
 }
 
 variable "service_accounts" {
-  description = "Cuentas de servicio de 4-projects: gke_nodes, app_workload, vm, run → email."
+  description = "Cuentas de servicio de 4-projects: gke_nodes, app_workload, vm y, si existe, run → email."
   type        = map(string)
 
   validation {
-    condition     = alltrue([for k in ["gke_nodes", "app_workload", "vm", "run"] : contains(keys(var.service_accounts), k)])
-    error_message = "service_accounts debe incluir gke_nodes, app_workload, vm y run."
+    condition     = alltrue([for k in ["gke_nodes", "app_workload", "vm"] : contains(keys(var.service_accounts), k)])
+    error_message = "service_accounts debe incluir gke_nodes, app_workload y vm (run es opcional: sin ella no hay Cloud Run)."
   }
 }
 

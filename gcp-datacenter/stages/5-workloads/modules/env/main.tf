@@ -5,7 +5,9 @@ locals {
   bucket_dual_region = coalesce(var.bucket_dual_region, var.env == "prod")
   enable_dr_cluster  = coalesce(var.enable_dr_cluster, var.env == "prod")
   # Balanceador con Cloud Armor, Memorystore y Backup and DR: solo prod por costo (ADR 0023).
-  enable_load_balancer = coalesce(var.enable_load_balancer, var.env == "prod")
+  # Cloud Run necesita la SA run de 4-projects: hasta que 4-projects se aplique, el plan de 5-workloads no la crea.
+  enable_cloud_run     = contains(keys(var.service_accounts), "run")
+  enable_load_balancer = local.enable_cloud_run && coalesce(var.enable_load_balancer, var.env == "prod")
   enable_memorystore   = coalesce(var.enable_memorystore, var.env == "prod")
   enable_backup_dr     = coalesce(var.enable_backup_dr, var.env == "prod")
   name_app             = "${var.prefix}-${var.env}-app"
@@ -179,6 +181,7 @@ module "observability" {
 
 module "cloud_run" {
   source = "../../../../modules/cloud-run"
+  count  = local.enable_cloud_run ? 1 : 0
 
   name                  = "${local.name_app}-run"
   project_id            = var.app_project_id
@@ -196,8 +199,8 @@ module "load_balancer" {
 
   name              = "${local.name_app}-lb"
   project_id        = var.app_project_id
-  region            = module.cloud_run.region
-  cloud_run_service = module.cloud_run.service_name
+  region            = module.cloud_run[0].region
+  cloud_run_service = module.cloud_run[0].service_name
   domain            = var.lb_domain
   labels            = var.labels
 }

@@ -98,7 +98,7 @@ run "dev_cloud_run_sin_servicios_de_prod" {
   command = plan
 
   assert {
-    condition     = output.cloud_run_service == "acme-dev-app-run" && module.cloud_run.region == "us-central1"
+    condition     = output.cloud_run_service == "acme-dev-app-run" && module.cloud_run[0].region == "us-central1"
     error_message = "Todos los entornos tienen Cloud Run <prefix>-<env>-app-run."
   }
 
@@ -312,6 +312,35 @@ run "dual_region_sin_llave_us" {
   }
 
   expect_failures = [var.bucket_dual_region]
+}
+
+run "sin_sa_run_no_hay_cloud_run_ni_balanceador" {
+  command = plan
+
+  variables {
+    env = "prod"
+    service_accounts = {
+      gke_nodes    = "gke-nodes@acme-prod-app-ab12.iam.gserviceaccount.com"
+      app_workload = "app-workload@acme-prod-app-ab12.iam.gserviceaccount.com"
+      vm           = "vm-instances@acme-prod-app-ab12.iam.gserviceaccount.com"
+    }
+    subnets = {
+      "us-central1" = { self_link = "projects/h/regions/us-central1/subnetworks/app-usc1", pods_range_name = "pods", services_range_name = "services" }
+      "us-east4"    = { self_link = "projects/h/regions/us-east4/subnetworks/app-use4", pods_range_name = "pods-use4", services_range_name = "services-use4" }
+    }
+    kms_keys = {
+      storage      = "projects/s/locations/us-central1/keyRings/kr/cryptoKeys/storage"
+      "storage-us" = "projects/s/locations/us/keyRings/kr-us/cryptoKeys/storage-us"
+      sql          = "projects/s/locations/us-central1/keyRings/kr/cryptoKeys/sql"
+      gke          = "projects/s/locations/us-central1/keyRings/kr/cryptoKeys/gke"
+      "sql-dr"     = "projects/s/locations/us-east4/keyRings/kr-dr/cryptoKeys/sql-dr"
+    }
+  }
+
+  assert {
+    condition     = length(module.cloud_run) == 0 && length(module.load_balancer) == 0 && output.cloud_run_service == null
+    error_message = "Sin la SA run (4-projects sin aplicar) no se crean Cloud Run ni el balanceador."
+  }
 }
 
 run "entorno_invalido" {

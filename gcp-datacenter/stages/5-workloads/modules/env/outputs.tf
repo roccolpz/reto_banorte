@@ -29,8 +29,8 @@ output "mig_name" {
 }
 
 output "cloud_run_service" {
-  description = "Nombre del servicio de Cloud Run."
-  value       = module.cloud_run.service_name
+  description = "Nombre del servicio de Cloud Run; null si 4-projects aún no crea la SA run."
+  value       = one(module.cloud_run[*].service_name)
 }
 
 output "lb_ip_address" {
