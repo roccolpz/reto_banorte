@@ -37,6 +37,14 @@ run "diario_con_retencion_de_30_dias" {
   }
 
   assert {
+    condition = (
+      google_backup_dr_backup_plan.sql.backup_rules[0].standard_schedule[0].backup_window[0].end_hour_of_day -
+      google_backup_dr_backup_plan.sql.backup_rules[0].standard_schedule[0].backup_window[0].start_hour_of_day >= 6
+    )
+    error_message = "La API exige una ventana diaria de al menos 6 horas."
+  }
+
+  assert {
     condition     = google_backup_dr_backup_plan_association.sql["primary"].resource == "projects/acme-prod-data-ab12/instances/acme-prod-data-sql-ab12"
     error_message = "La instancia de Cloud SQL queda asociada al plan."
   }

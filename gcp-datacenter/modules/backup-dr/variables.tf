@@ -43,13 +43,13 @@ variable "log_retention_days" {
 }
 
 variable "backup_window_start_hour" {
-  description = "Hora de inicio (0-20) de la ventana diaria de respaldo, de 4 horas."
+  description = "Hora de inicio (0-18) de la ventana diaria de respaldo, de 6 horas (mínimo de la API)."
   type        = number
   default     = 2
 
   validation {
-    condition     = var.backup_window_start_hour >= 0 && var.backup_window_start_hour <= 20
-    error_message = "backup_window_start_hour debe estar entre 0 y 20."
+    condition     = var.backup_window_start_hour >= 0 && var.backup_window_start_hour <= 18
+    error_message = "backup_window_start_hour debe estar entre 0 y 18."
   }
 }
 
