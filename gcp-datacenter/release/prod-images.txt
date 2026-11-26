@@ -8,3 +8,4 @@
 #   - al fusionar, el job attest-prod de apply.yml firma cada imagen nueva con la llave del attestor.
 # Quitar una línea no revoca su atestación: para bloquear una imagen ya firmada, ver docs/runbooks/qa-approvers.md.
 # CI valida el formato en cada PR (scripts/attest-images.sh check).
+us-docker.pkg.dev/cloudrun/container/hello@sha256:9654ebfdd31387ad4c1b79ca025ce55ed157d55abb29bdd6ec2231f754d8da0e
