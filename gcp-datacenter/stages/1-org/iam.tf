@@ -129,6 +129,8 @@ locals {
       "attestor-prod" = [
         { scope = "project", key = "security", role = "roles/containeranalysis.notes.attacher" },
         { scope = "project", key = "security", role = "roles/containeranalysis.occurrences.editor" },
+        # attest-images.sh lista las atestaciones existentes antes de firmar (notes.listOccurrences).
+        { scope = "project", key = "security", role = "roles/containeranalysis.notes.occurrences.viewer" },
       ]
       "3-networks-hub" = [
         { scope = "project", key = "net_hub", role = "roles/compute.networkAdmin" },
