@@ -34,7 +34,7 @@ Binary Authorization no expresa "2 de N personas": una política exige una atest
 | Identidad | Recibe | Dónde |
 |-----------|--------|-------|
 | `attestor-prod` (0-bootstrap, nueva) | `cloudkms.signerVerifier` | solo la llave del attestor |
-| | `binaryauthorization.attestorsViewer` | solo el attestor |
+| | `binaryauthorization.attestorsVerifier` | solo el attestor |
 | | `containeranalysis.notes.attacher`, `containeranalysis.occurrences.editor` | proyecto de seguridad (solo guarda esta nota y sus atestaciones) |
 | | WIF solo con environment `prod` y rama `main` (`attribute.prod_main`) | — |
 | | Nada en la organización, sin acceso al bucket de estado | — |

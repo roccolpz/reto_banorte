@@ -86,11 +86,11 @@ resource "google_binary_authorization_attestor_iam_member" "stage_4_projects_pro
   member   = "serviceAccount:${local.stage_sas["4-projects-prod"]}"
 }
 
-# attestor-prod lee el attestor para validar la atestación al crearla (--validate).
+# attestor-prod valida la atestación contra el attestor al crearla (--validate pide attestors.verifyImageAttested).
 resource "google_binary_authorization_attestor_iam_member" "attestor_viewer" {
   project  = local.security_project_id
   attestor = google_binary_authorization_attestor.qa_approved.name
-  role     = "roles/binaryauthorization.attestorsViewer"
+  role     = "roles/binaryauthorization.attestorsVerifier"
   member   = "serviceAccount:${local.attestor_sa}"
 }
 

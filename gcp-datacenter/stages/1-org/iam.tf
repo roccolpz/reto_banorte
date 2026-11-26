@@ -123,7 +123,7 @@ locals {
         { scope = "project", key = "security", role = "roles/binaryauthorization.attestorsAdmin" },
         { scope = "project", key = "security", role = "roles/containeranalysis.notes.editor" },
       ]
-      # Firma las imágenes de prod que QA aprobó (ADR 0022-k). signerVerifier sobre la llave y attestorsViewer sobre el
+      # Firma las imágenes de prod que QA aprobó (ADR 0022-k). signerVerifier sobre la llave y attestorsVerifier sobre el
       # attestor los da 2-security sobre esos recursos. El proyecto de seguridad solo guarda la nota qa-approved y sus
       # atestaciones.
       "attestor-prod" = [
