@@ -20,8 +20,7 @@ gcp-datacenter/
 │   ├── 3-networks/hub/
 │   ├── 3-networks/envs/{dev,qa,prod}/
 │   ├── 4-projects/envs/{dev,qa,prod}/
-│   ├── 5-workloads/envs/{dev,qa,prod}/
-│   └── test-orchestration/  LEGADO. No se borra (tiene estado local con recursos vivos). Debe seguir validando.
+│   └── 5-workloads/envs/{dev,qa,prod}/
 ├── policies/                Conftest (rego) sobre el plan JSON
 ├── tests/                   e2e y notas de pruebas de integración
 └── docs/                    README de operación, adr/, runbooks/, diagramas

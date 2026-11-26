@@ -32,7 +32,6 @@
 /gcp-datacenter/modules/vpc-sc/                 @acme/gcp-security-admins
 /gcp-datacenter/modules/network-hub/            @acme/gcp-network-admins
 /gcp-datacenter/modules/network-spoke/          @acme/gcp-network-admins
-/gcp-datacenter/modules/network-host/           @acme/gcp-network-admins
 /gcp-datacenter/modules/hybrid-connectivity/    @acme/gcp-network-admins
 /gcp-datacenter/modules/firewall/               @acme/gcp-network-admins
 /gcp-datacenter/modules/gke/                    @acme/gcp-devops

@@ -38,8 +38,6 @@ Diagrama: [diagrams/cicd.md](diagrams/cicd.md).
 Entornos en orden: dev, qa, prod. La variable de la SA sale de la llave de `stage_service_accounts`: mayúsculas y `-`
 cambiado por `_` (`3-networks-prod` → `TF_SA_3_NETWORKS_PROD`).
 
-`stages/test-orchestration` es legado con estado local: CI la valida, pero no la planea ni la aplica.
-
 ## Variables de GitHub
 
 Settings > Secrets and variables > Actions > Variables (variables de repositorio, no secretos: ninguna es una

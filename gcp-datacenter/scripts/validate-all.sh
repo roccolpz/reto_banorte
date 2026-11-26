@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Validación local completa, sin credenciales ni backend:
-#   1. terraform fmt -check en módulos y etapas (sin el legado test-orchestration, que no está formateado)
-#   2. init -backend=false + validate en cada raíz, en cada examples/* de módulo y en el legado test-orchestration
+#   1. terraform fmt -check en módulos y etapas
+#   2. init -backend=false + validate en cada raíz y en cada examples/* de módulo
 #   3. terraform test en cada módulo y raíz con carpeta tests/
 # Sale con código distinto de cero si algo falla; imprime un resumen al final.
 # Usa TF_PLUGIN_CACHE_DIR si está definido para no descargar proveedores en cada raíz.
@@ -45,14 +45,13 @@ echo "== fmt"
 for d in gcp-datacenter/modules gcp-datacenter/stages/*/; do
   d=${d%/}
   [ -d "$d" ] || continue
-  [[ $d == */test-orchestration ]] && continue
   run "fmt $d" terraform fmt -check -recursive "$d"
 done
 
 echo "== validate"
 roots=$(bash "$DISCOVER" roots)
 examples=$(find gcp-datacenter/modules -mindepth 3 -maxdepth 3 -type d -path '*/examples/*' | sort)
-for d in $roots $examples gcp-datacenter/stages/test-orchestration; do
+for d in $roots $examples; do
   [ -d "$d" ] || continue
   run "validate $d" tf_run "$d" validate
 done

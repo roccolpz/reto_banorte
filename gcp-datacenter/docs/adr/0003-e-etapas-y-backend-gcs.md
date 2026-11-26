@@ -35,4 +35,5 @@ sobre todo. Un error en una red de dev puede bloquear un cambio de prod. El esta
 - Cambiar el nombre de una salida rompe a sus consumidores: se trata como cambio de interfaz y se actualiza el contrato.
 - `0-bootstrap` se aplica primero con estado local y luego migra su estado al bucket que crea
   (runbook `bootstrap-first-apply.md`).
-- `stages/test-orchestration` queda como legado con estado local y fuera del pipeline de apply.
+- `stages/test-orchestration` queda como legado con estado local y fuera del pipeline de apply. Se borró el
+  2026-11-25, después de confirmar que sus recursos ya no existían en GCP.

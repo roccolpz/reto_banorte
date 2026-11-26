@@ -60,15 +60,7 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
-      # Se excluye el legado stages/test-orchestration (estado local con recursos vivos, sin formatear).
-      - run: |
-          rc=0
-          for d in gcp-datacenter/modules gcp-datacenter/stages/*/; do
-            d=${d%/}
-            [[ $d == */test-orchestration ]] && continue
-            terraform fmt -check -recursive -diff "$d" || rc=1
-          done
-          exit "$rc"
+      - run: terraform fmt -check -recursive -diff gcp-datacenter
 
   tflint:
     runs-on: ubuntu-24.04
@@ -85,13 +77,12 @@ jobs:
       - run: tflint --init --config "$PWD/.tflint.hcl"
         env:
           GITHUB_TOKEN: ${{ github.token }}
-      # Raíces de etapa y módulos propios; se excluyen los legados test-orchestration y network-host.
+      # Raíces de etapa y módulos propios.
       - run: |
           rc=0
           dirs=$(bash scripts/discover-roots.sh roots | sed 's#^gcp-datacenter/##')
           for m in modules/*/; do
             m=${m%/}
-            [ "$m" = modules/network-host ] && continue
             dirs+=$'\n'"$m"
           done
           while IFS= read -r d; do

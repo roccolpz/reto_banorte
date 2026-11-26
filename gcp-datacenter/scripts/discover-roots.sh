@@ -12,7 +12,6 @@
 #   - archivo dentro de una raíz            -> esa raíz
 #   - archivo en gcp-datacenter/modules/    -> todas las raíces
 #   - archivo en una etapa fuera de raíces  -> todas las raíces de esa etapa (p. ej. stages/5-workloads/modules/env)
-# Se excluye el legado stages/test-orchestration.
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
@@ -23,7 +22,7 @@ MODULES=gcp-datacenter/modules
 all_roots() {
   find "$STAGES" -name versions.tf \
     -not -path '*/.terraform/*' -not -path '*/modules/*' -not -path '*/examples/*' \
-    -not -path '*/test-orchestration/*' -exec dirname {} \; | sort -u
+    -exec dirname {} \; | sort -u
 }
 
 changed_roots() {
@@ -47,7 +46,6 @@ changed_roots() {
     done <<<"$roots"
     if [ "$hit" -eq 0 ]; then
       stage=$(cut -d/ -f1-3 <<<"$f")
-      [[ $stage == */test-orchestration ]] && continue
       grep -E "^${stage}(/|$)" <<<"$roots" || true
     fi
   done <<<"$files" | sort -u
