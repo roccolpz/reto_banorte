@@ -93,3 +93,25 @@ resource "google_binary_authorization_attestor_iam_member" "attestor_viewer" {
   role     = "roles/binaryauthorization.attestorsViewer"
   member   = "serviceAccount:${local.attestor_sa}"
 }
+
+# attestor-prod lista las atestaciones existentes (evita firmar dos veces) y adjunta la nueva ocurrencia a la nota.
+resource "google_container_analysis_note_iam_member" "attestor_occurrences_viewer" {
+  project = local.security_project_id
+  note    = google_container_analysis_note.qa_approved.name
+  role    = "roles/containeranalysis.notes.occurrences.viewer"
+  member  = "serviceAccount:${local.attestor_sa}"
+}
+
+resource "google_container_analysis_note_iam_member" "attestor_attacher" {
+  project = local.security_project_id
+  note    = google_container_analysis_note.qa_approved.name
+  role    = "roles/containeranalysis.notes.attacher"
+  member  = "serviceAccount:${local.attestor_sa}"
+}
+
+# La ocurrencia (la atestación) se crea en el proyecto de seguridad, junto a la nota.
+resource "google_project_iam_member" "attestor_occurrences_editor" {
+  project = local.security_project_id
+  role    = "roles/containeranalysis.occurrences.editor"
+  member  = "serviceAccount:${local.attestor_sa}"
+}
