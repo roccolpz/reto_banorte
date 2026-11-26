@@ -25,7 +25,8 @@ entorno.
 
 Además:
 
-- **Presupuesto**: `google_billing_budget` mensual en `0-bootstrap` (lo aplica un administrador), alertas al 50, 90 y
+- **Presupuesto**: `google_billing_budget` mensual de 6,000 MXN (unos 300 USD; la API exige la moneda de la cuenta de
+  facturación, que es MXN) en `0-bootstrap` (lo aplica un administrador), alertas al 50, 90 y
   100 % del gasto real y al 100 % pronosticado, con los créditos excluidos para que la alerta mida el costo real.
 - **Infracost**: el job `plan` de `ci.yml` estima el costo mensual del plan y lo agrega al comentario del PR. Necesita el
   secreto `INFRACOST_API_KEY`; sin él se omite y el PR no se bloquea.

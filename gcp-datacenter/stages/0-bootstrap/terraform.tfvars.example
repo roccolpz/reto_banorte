@@ -6,7 +6,8 @@ suffix          = "a1b2"
 # prefix            = "acme"
 # region            = "us-central1"
 # github_repository = "roccolpz/reto_banorte"
-# budget_amount     = 300 # USD al mes; alertas al 50, 90 y 100 % y al pronóstico del 100 %
+# budget_amount     = 6000  # al mes, en budget_currency; alertas al 50, 90 y 100 % y al pronóstico del 100 %
+# budget_currency   = "MXN" # la moneda de la cuenta de facturación; la API rechaza otra
 
 labels = {
   app         = "landing-zone"

@@ -184,8 +184,8 @@ run "presupuesto_mensual_con_alertas" {
   command = plan
 
   assert {
-    condition     = google_billing_budget.monthly.amount[0].specified_amount[0].units == "300"
-    error_message = "Presupuesto mensual de 300 por defecto."
+    condition     = google_billing_budget.monthly.amount[0].specified_amount[0].units == "6000" && google_billing_budget.monthly.amount[0].specified_amount[0].currency_code == "MXN"
+    error_message = "Presupuesto mensual de 6000 MXN por defecto (moneda de la cuenta de facturación)."
   }
 
   assert {
