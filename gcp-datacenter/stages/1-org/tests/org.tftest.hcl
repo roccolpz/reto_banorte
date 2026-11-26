@@ -377,6 +377,7 @@ run "binary_authorization_minimo_privilegio" {
   assert {
     condition = toset([for k, b in local.stage_sa_bindings : b.role if startswith(k, "attestor-prod|")]) == toset([
       "roles/containeranalysis.notes.attacher",
+      "roles/containeranalysis.notes.occurrences.viewer",
       "roles/containeranalysis.occurrences.editor",
     ]) && alltrue([for k, b in local.stage_sa_bindings : b.scope == "project" && b.key == "security" if startswith(k, "attestor-prod|")])
     error_message = "attestor-prod solo adjunta atestaciones en el proyecto de seguridad (la llave la da 2-security)."
