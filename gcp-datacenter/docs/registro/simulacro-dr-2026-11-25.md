@@ -46,8 +46,32 @@ El primer uso real de `attest-prod` falló por permisos de `sa-binauthz-attestor
 | #17 | igual | `roles/containeranalysis.notes.occurrences.viewer` en 1-org, junto a `attacher` y `occurrences.editor`; revierte #16 |
 | #18 | `attestations create --validate` pide `attestors.verifyImageAttested` | `attestorsViewer` → `attestorsVerifier` en 2-security (ADR 0022-k actualizado) |
 
-## Estado después del simulacro
+## Estado después del simulacro y reconciliación
 
-- La réplica promovida ya no coincide con Terraform: `drift` la reportará en `5-workloads/prod` hasta reconstruir.
-- Para volver a la topología normal: `destroy` y `apply` de `5-workloads/prod` (lo que se hace al cerrar cada sesión de
-  trabajo), o el paso 5 del runbook si hubiera datos que conservar.
+Al terminar, la réplica promovida `acme-prod-data-sql-d216-dr` ya era una instancia primaria independiente, pero el
+estado de Terraform la seguía describiendo como réplica de `acme-prod-data-sql-d216`. No se podía borrar solo la
+instancia `-dr` y dejar que Terraform la recreara: Cloud SQL no permite reusar el nombre de una instancia borrada durante
+unos 7 días.
+
+La solución fue cambiar el sufijo del nombre, que sale de `random_id.sql`:
+
+```bash
+cd gcp-datacenter/stages/5-workloads/envs/prod
+terraform plan -var-file=lab.tfvars -replace=module.env.random_id.sql -out=sqlfix.tfplan
+# Plan: 3 to add, 0 to change, 3 to destroy (random_id, primaria y réplica)
+terraform apply sqlfix.tfplan
+```
+
+| Paso | Resultado |
+|---|---|
+| Apply | 02:30:20 → 02:44:43 UTC (14 min), sin errores |
+| Primaria nueva | `acme-prod-data-sql-8c10` (us-central1), 10.30.128.14 |
+| Réplica nueva | `acme-prod-data-sql-8c10-dr` (us-east4), 10.30.129.5, réplica de `8c10` |
+| Instancias anteriores | borradas por el mismo apply (incluida la `-dr` promovida) |
+| `terraform plan` posterior | `No changes. Your infrastructure matches the configuration.` |
+
+Se pierden los datos de la base (eran de demostración). En un incidente real no se haría así: se conservaría la
+instancia promovida con el paso 5 del runbook (`state rm` + `import`) y se crearía una réplica nueva en la otra región.
+
+Esto solo hace falta después de promover una réplica. Un `destroy` y `apply` normal de `5-workloads` también
+recrea `random_id.sql`, así que cada despliegue usa nombres nuevos y no choca con el bloqueo de 7 días.

@@ -23,7 +23,7 @@ Crear los tags:
 ```sh
 git switch main && git pull
 for m in gcp-datacenter/modules/*/; do
-  n=$(basename "$m"); [ "$n" = network-host ] && continue   # legado (ver .checkov.yaml)
+  n=$(basename "$m")
   git tag -a "modules/$n/v1.0.0" -m "modules/$n v1.0.0"
 done
 git push origin --tags
@@ -32,4 +32,4 @@ git push origin --tags
 ## Consecuencias
 
 - Quien cambia un módulo sube su versión en un tag después del merge; el PR dice qué tipo de cambio es.
-- `network-host` (legado) no se versiona.
+- `network-host` (legado) no se versionó; se borró el 2026-11-25 junto con `stages/test-orchestration`.

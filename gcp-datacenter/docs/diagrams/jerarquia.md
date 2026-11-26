@@ -1,43 +1,32 @@
 # Jerarquía de recursos
 
+Lo desplegado en la organización de prueba usa `compact_projects = true` (`stages/1-org/lab.tfvars`): un proyecto
+`common` y un proyecto por entorno que aloja red, app y datos. Así cabe en la cuota de proyectos y créditos.
+
 ```mermaid
 flowchart TD
-  org["Organización"]
+  org["Organización 544577283167<br/>org policies + firewall jerárquico (1-org)"]
   org --> fb["Carpeta bootstrap"]
   org --> fc["Carpeta common"]
   org --> fd["Carpeta dev"]
   org --> fq["Carpeta qa"]
   org --> fp["Carpeta prod"]
 
-  fb --> seed["acme-bootstrap-seed-xxxx<br/>bucket de estado (CMEK), WIF, SA de etapas"]
+  fb --> seed["acme-bootstrap-seed-346e<br/>bucket de estado (CMEK), WIF, SA por etapa"]
+  fc --> common["acme-common-346e<br/>VPC hub, HA VPN, NCC, DNS · KMS, Secret Manager<br/>sink de auditoría · attestor de Binary Authorization<br/>on-prem simulado (VPC aparte)"]
+  fd --> dev["acme-dev-346e<br/>VPC dev + GKE, MIG, Cloud SQL, Redis, Cloud Run"]
+  fq --> qa["acme-qa-346e<br/>VPC qa + mismas cargas"]
+  fp --> prod["acme-prod-346e<br/>VPC prod (us-central1 + us-east4)<br/>cargas + DR, balanceador con Cloud Armor, Backup and DR"]
 
-  fc --> nethub["acme-common-net-hub-xxxx<br/>VPC hub, HA VPN, NCC"]
-  fc --> logging["acme-common-logging-xxxx<br/>sink de auditoría"]
-  fc --> security["acme-common-security-xxxx<br/>KMS, Secret Manager"]
-  fc --> backup["acme-common-backup-xxxx"]
-
-  fd --> dhost["acme-dev-net-host-xxxx<br/>Shared VPC host"]
-  fd --> dapp["acme-dev-app-xxxx"]
-  fd --> ddata["acme-dev-data-xxxx"]
-
-  fq --> qhost["acme-qa-net-host-xxxx"]
-  fq --> qapp["acme-qa-app-xxxx"]
-  fq --> qdata["acme-qa-data-xxxx"]
-
-  fp --> phost["acme-prod-net-host-xxxx"]
-  fp --> papp["acme-prod-app-xxxx"]
-  fp --> pdata["acme-prod-data-xxxx"]
-
-  dhost -. "Shared VPC" .-> dapp
-  dhost -. "Shared VPC" .-> ddata
-  qhost -. "Shared VPC" .-> qapp
-  qhost -. "Shared VPC" .-> qdata
-  phost -. "Shared VPC" .-> papp
-  phost -. "Shared VPC" .-> pdata
+  common -. "NCC spoke" .- dev
+  common -. "NCC spoke" .- qa
+  common -. "NCC spoke" .- prod
 ```
 
-- `xxxx` es `var.suffix` (4 caracteres hex) para que los IDs globales sean únicos.
-- Las org policies y el firewall jerárquico se aplican en la organización (`1-org`).
 - Cada entorno tiene su perímetro de VPC Service Controls (`2-security`, en dry-run: ADR 0006-e).
-- Etapa responsable: carpetas y proyectos comunes en `1-org`; hosts de red en `1-org` y su red en
-  `3-networks`; proyectos de app y datos en `4-projects`.
+- Con `compact_projects = false` el diseño completo separa cada carpeta en proyectos por función: `common` en
+  `net-hub`, `logging`, `security` y `backup`; cada entorno en `net-host` (Shared VPC), `app` y `data`. El código es
+  el mismo; solo cambia la variable.
+- `346e` es `var.suffix` (4 caracteres hex) para que los IDs globales sean únicos.
+- Etapa responsable: carpetas y proyectos en `1-org`; red en `3-networks`; proyectos de entorno en `4-projects`;
+  cargas en `5-workloads`.

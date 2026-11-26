@@ -7,9 +7,6 @@ quiet: true
 soft-fail: false
 download-external-modules: false
 skip-path:
-  # Legado con estado local y recursos vivos; se retira al migrar a las etapas nuevas.
-  - stages/test-orchestration
-  - modules/network-host
   # Fixtures de políticas (JSON de plan), no son código Terraform.
   - policies/testdata
   # Fixtures de Terratest: proyecto efímero con mínimos (sin CMEK en GKE, bucket con force_destroy). Los módulos
