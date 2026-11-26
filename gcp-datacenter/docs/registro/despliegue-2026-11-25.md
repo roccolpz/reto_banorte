@@ -59,3 +59,22 @@ OK    DNS app.corp.acme.internal    (192.168.10.10, zona de reenvío corp.acme.i
 
 La VM de prod no tiene IP externa; el tráfico va por IP privada y el nombre se resuelve con la zona de reenvío
 `acme-common-net-hub-corp-fwd` hacia el DNS on-prem.
+
+## El pipeline bloquea un PR que viola políticas
+
+- PR de demostración #12 (borrador, cerrado sin fusionar): https://github.com/roccolpz/reto_banorte/pull/12
+- Cambio: archivo `stages/5-workloads/envs/dev/demo-violacion.tf` con un bucket `public_access_prevention = "inherited"`
+  y un `google_storage_bucket_iam_member` a `allUsers`.
+- Ejecución de `ci`: https://github.com/roccolpz/reto_banorte/actions/runs/45736156445
+
+| Capa | Resultado |
+|---|---|
+| checkov (estático) | falla: `CKV_GCP_114` (prevención de acceso público) y `CKV_GCP_28` (bucket público) |
+| conftest sobre `plan.json` | falla: `public_access_prevention debe ser "enforced"` e `IAM público (allUsers) no permitido` |
+| `plan (5-workloads/envs/dev)` | `terraform plan` ok (2 por agregar), job en rojo por la política; comentario en el PR con el detalle |
+| `ci-ok` (check obligatorio) | falla |
+| Estado de fusión del PR | `BLOCKED` por el ruleset `main-protegida` |
+
+Las dos capas son independientes: checkov revisa el HCL y conftest el plan con valores resueltos, así que una
+violación que una no ve la ve la otra. El resto de jobs (fmt, tflint, validate, pruebas de módulos) pasó, lo que
+confirma que el rechazo viene solo de las políticas.
