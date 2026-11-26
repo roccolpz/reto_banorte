@@ -1,4 +1,4 @@
-# Runbook: failover de Cloud SQL de prod a us-east4
+# Runbook: failover de prod a us-east4 (Cloud SQL y GKE)
 
 Cuándo: us-central1 no está disponible y la base de prod no responde, o un simulacro de DR.
 Quién: plataforma, con aprobación del responsable del servicio. La promoción es irreversible: la réplica deja de ser
@@ -42,6 +42,20 @@ Espera `state: RUNNABLE` e `instanceType: CLOUD_SQL_INSTANCE`.
 - Actualiza el secreto o la configuración que usan las aplicaciones (registro DNS en `prod.gcp.acme.internal.` o el
   valor en Secret Manager) y reinicia las cargas de us-east4.
 - Si las cargas de us-central1 siguen caídas, escala el MIG o el clúster en us-east4.
+
+## 4b. Levantar las cargas en el clúster GKE de DR
+
+El clúster en espera `<prefix>-prod-app-gke-dr` (us-east4) tiene endpoint solo privado y Binary Authorization.
+
+1. Acceso desde fuera de la VPC: habilita el endpoint DNS (protegido por IAM) y obtén credenciales.
+   ```bash
+   gcloud container clusters update <prefix>-prod-app-gke-dr --zone us-east4-a --project <app_project_id> --enable-dns-access
+   gcloud container clusters get-credentials <prefix>-prod-app-gke-dr --zone us-east4-a --project <app_project_id> --dns-endpoint
+   ```
+2. Despliega las mismas imágenes de prod, **por digest**: solo corren las que están en `release/prod-images.txt` y ya
+   firmó `attest-prod`. Una imagen sin firmar la rechaza el admission.
+3. Apunta las cargas a la IP privada de la base promovida (paso 4) y verifica que respondan.
+4. Al terminar el incidente o el simulacro: `gcloud container clusters update ... --no-enable-dns-access`.
 
 ## 5. Reconciliar Terraform
 

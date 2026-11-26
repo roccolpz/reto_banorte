@@ -29,7 +29,7 @@ On-premises se simula con una VPC `onprem-sim` en GCP conectada por HA VPN, porq
 - Se pueden demostrar seis de los ocho criterios de aceptación: despliegue desde cero, segundo plan sin cambios,
   destroy de dev, PR bloqueado por política, conectividad privada y DNS hacia on-premises, y módulos con README,
   ejemplo y prueba.
-- No se demuestran: SCC sin hallazgos críticos o altos, y el simulacro de DR dentro del RTO.
+- No se demuestran: SCC sin hallazgos críticos o altos, y el simulacro de DR dentro del RTO. (Actualización 2026-11-25: ambos se demostraron, ver `docs/registro/scc-2026-11-24.md` y `docs/registro/simulacro-dr-2026-11-25.md`.)
 - El código se valida con `terraform validate` y `terraform test` con proveedores simulados. El despliegue real en GCP
   lo ejecuta quien tenga acceso a la organización.
 
